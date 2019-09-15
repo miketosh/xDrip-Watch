@@ -25,14 +25,14 @@
         android:required="false" />
 
     <uses-permission-sdk-23 android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
-    <uses-permission-sdk-23 android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <!-- MIKETOSH: uses-permission-sdk-23 android:name="android.permission.ACCESS_FINE_LOCATION" / -->
 
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="com.google.android.gms.permission.ACTIVITY_RECOGNITION" />
     <uses-permission android:name="com.google.android.wearable.permission.BIND_COMPLICATION_PROVIDER" />
-    <uses-permission android:name="android.permission.BODY_SENSORS" />
+    <!-- MIKETOSH: uses-permission android:name="android.permission.BODY_SENSORS" / -->
     <uses-permission android:name="android.permission.VIBRATE" />
 
     <application
@@ -286,12 +286,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity
+        <!-- MIKETOSH: activity
             android:name=".LocationPermissionActivity"
             android:label="title_activity_location_permission"
-            android:launchMode="singleTop">
+            android:launchMode="singleTop" -->
 
-        </activity>
+        <!-- MIKETOSH: /activity -->
         <activity
             android:name=".SnoozeActivity"
             android:configChanges="orientation|screenSize"
