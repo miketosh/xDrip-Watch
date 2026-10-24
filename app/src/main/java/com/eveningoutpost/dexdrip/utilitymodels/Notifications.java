@@ -525,14 +525,14 @@ public class Notifications extends IntentService {
 
         if (wakeIntent == null) {
             // TODO request code??
-            wakeIntent = PendingIntent.getService(this, 0, new Intent(this, this.getClass()), 0);
+            wakeIntent = com.eveningoutpost.dexdrip.utils.framework.PendingIntents.getService(this, 0, new Intent(this, this.getClass()), 0);
         }
         JoH.wakeUpIntent(context, wakeTime - now, wakeIntent);
 
 
        /* if (wakeIntent != null)
             alarm.cancel(wakeIntent);
-        wakeIntent = PendingIntent.getService(this, 0, new Intent(this, this.getClass()), 0);
+        wakeIntent = com.eveningoutpost.dexdrip.utils.framework.PendingIntents.getService(this, 0, new Intent(this, this.getClass()), 0);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             alarm.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, wakeTime, wakeIntent);
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
@@ -587,7 +587,8 @@ public class Notifications extends IntentService {
         PendingIntent resultPendingIntent =
                 stackBuilder.getPendingIntent(
                         0,
-                        PendingIntent.FLAG_UPDATE_CURRENT
+                        // xDrip-Watch: target 31+ needs an explicit mutability flag.
+                        PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
                 );
 
         //final NotificationCompat.Builder b = new NotificationCompat.Builder(mContext, NotificationChannels.ONGOING_CHANNEL);
@@ -868,7 +869,7 @@ public class Notifications extends IntentService {
     }
 
     private PendingIntent notificationIntent(Intent intent){
-        return PendingIntent.getActivity(mContext, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+        return com.eveningoutpost.dexdrip.utils.framework.PendingIntents.getActivity(mContext, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
     }
 
     private void notificationDismiss(int notificationId) {
@@ -1036,12 +1037,12 @@ public class Notifications extends IntentService {
                             .setContentText(message)
                             .setLocalOnly(localOnly)
                             .setStyle(new NotificationCompat.BigTextStyle().bigText(message))
-                            .setContentIntent(PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT));
+                            .setContentIntent(com.eveningoutpost.dexdrip.utils.framework.PendingIntents.getActivity(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT));
             if (addDeleteIntent) {
                 Intent deleteIntent = new Intent(context, SnoozeOnNotificationDismissService.class);
                 deleteIntent.putExtra("alertType", type);
                 deleteIntent.putExtra("raisedTimeStamp", JoH.tsl());
-                mBuilder.setDeleteIntent(PendingIntent.getService(context, 0, deleteIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE));
+                mBuilder.setDeleteIntent(com.eveningoutpost.dexdrip.utils.framework.PendingIntents.getService(context, 0, deleteIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE));
             }
             if (extraAlertsOverrideSilent) {
                 UserError.Log.d(TAG, "Setting full screen intent");

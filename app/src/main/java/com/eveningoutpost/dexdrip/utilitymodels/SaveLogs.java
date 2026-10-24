@@ -95,8 +95,7 @@ public class SaveLogs extends BaseAppCompatActivity {
     }
 
     public static boolean isStorageWritable(Activity context, int request_code) { // Get write permission if not & return false.  Return true if yes and not tied up.
-        if (ContextCompat.checkSelfPermission(context,
-                android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
+        if (com.eveningoutpost.dexdrip.utils.framework.StorageAccess.checkSelfPermission(context, android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
                 != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(context,
                     new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},

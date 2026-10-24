@@ -457,7 +457,7 @@ public class CollectionServiceStarter {
         calendar.set(Calendar.MINUTE, 0);
         calendar.set(Calendar.SECOND, 0);
 
-        final PendingIntent pi = PendingIntent.getService(this.mContext, 0, new Intent(this.mContext, DailyIntentService.class), PendingIntent.FLAG_UPDATE_CURRENT);
+        final PendingIntent pi = com.eveningoutpost.dexdrip.utils.framework.PendingIntents.getService(this.mContext, 0, new Intent(this.mContext, DailyIntentService.class), PendingIntent.FLAG_UPDATE_CURRENT);
         final AlarmManager am = (AlarmManager) this.mContext.getSystemService(Context.ALARM_SERVICE);
         am.cancel(pi);
         am.setRepeating(AlarmManager.RTC_WAKEUP, calendar.getTimeInMillis(), AlarmManager.INTERVAL_DAY, pi);

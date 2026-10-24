@@ -74,7 +74,7 @@ public class WidgetUpdateService extends Service {
         intentFilter.addAction(Intent.ACTION_SCREEN_OFF);
         if (isRegistered)
             unregisterReceiver(broadcastReceiver);
-        registerReceiver(broadcastReceiver, intentFilter);
+        com.eveningoutpost.dexdrip.utils.framework.Receivers.register(this, broadcastReceiver, intentFilter);
         isRegistered = true;
     }
 
@@ -85,7 +85,7 @@ public class WidgetUpdateService extends Service {
         intentFilter.addAction(Intent.ACTION_SCREEN_OFF);
         if (isRegistered)
             unregisterReceiver(broadcastReceiver);
-        registerReceiver(broadcastReceiver, intentFilter);
+        com.eveningoutpost.dexdrip.utils.framework.Receivers.register(this, broadcastReceiver, intentFilter);
         isRegistered = true;
     }
 

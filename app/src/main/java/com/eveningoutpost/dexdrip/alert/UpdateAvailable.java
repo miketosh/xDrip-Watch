@@ -43,7 +43,7 @@ public class UpdateAvailable extends BaseAlert {
 
         val intent = new Intent(context, UpdateActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-        val pendingIntent = PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        val pendingIntent = com.eveningoutpost.dexdrip.utils.framework.PendingIntents.getActivity(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
         val channel = Pref.getString("update_channel", "beta"); // get the current update channel
         showNotification(xdrip.gs(R.string.xdrip_update), xdrip.gs(R.string.a_new_version_on_channel_1_s_is_available, channel), pendingIntent, notificationId, null, true, true, null, null, null, false);

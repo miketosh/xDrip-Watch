@@ -1,8 +1,14 @@
 package com.eveningoutpost.dexdrip.utilitymodels;
 
+import android.Manifest;
 import android.app.Service;
+import android.content.ComponentName;
 import android.content.Context;
+import android.content.pm.PackageManager;
+import android.content.pm.ServiceInfo;
 import android.os.Build;
+
+import androidx.core.content.ContextCompat;
 
 import com.eveningoutpost.dexdrip.models.JoH;
 import com.eveningoutpost.dexdrip.models.UserError;
@@ -55,7 +61,11 @@ public class ForegroundServiceStarter {
                   Even then the restrictions seem to be applied inconsistently!
                  */
             try {
-                mService.startForeground(ongoingNotificationId, new Notifications().createOngoingNotification(new BgGraphBuilder(mContext, start, end), mContext), FOREGROUND_SERVICE_TYPE_MANIFEST);
+                mService.startForeground(ongoingNotificationId, new Notifications().createOngoingNotification(new BgGraphBuilder(mContext, start, end), mContext), foregroundTypes(true));
+            } catch (SecurityException e) {
+                // xDrip-Watch: a type's prerequisite was missing (target 34+); retry without location.
+                UserError.Log.e(TAG, "Foreground start refused for " + mService.getClass().getSimpleName() + ", retrying without location: " + e);
+                mService.startForeground(ongoingNotificationId, new Notifications().createOngoingNotification(new BgGraphBuilder(mContext, start, end), mContext), foregroundTypes(false));
             } catch (IllegalArgumentException e) {
                 UserError.Log.e(TAG, "Got exception trying to use Android 10+ service starting for " + mService.getClass().getSimpleName() + " " + e);
                 mService.startForeground(ongoingNotificationId, new Notifications().createOngoingNotification(new BgGraphBuilder(mContext, start, end), mContext));
@@ -67,6 +77,38 @@ public class ForegroundServiceStarter {
         //     }
         // });
 
+    }
+
+    /**
+     * xDrip-Watch: from target 34 Android checks the prerequisites of every
+     * requested type, and FOREGROUND_SERVICE_TYPE_MANIFEST requests them all.
+     * Request this service's declared types, without location unless a
+     * location permission is granted (connectedDevice is satisfied by
+     * CHANGE_NETWORK_STATE in the manifest).
+     */
+    private int foregroundTypes(final boolean allowLocation) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            return FOREGROUND_SERVICE_TYPE_MANIFEST;
+        }
+        int types;
+        try {
+            types = mContext.getPackageManager()
+                    .getServiceInfo(new ComponentName(mContext, mService.getClass()), 0)
+                    .getForegroundServiceType();
+        } catch (Exception e) {
+            UserError.Log.e(TAG, "Cannot read foreground service type for " + mService.getClass().getSimpleName() + ": " + e);
+            return FOREGROUND_SERVICE_TYPE_MANIFEST;
+        }
+        final boolean locationGranted =
+                ContextCompat.checkSelfPermission(mContext, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                        || ContextCompat.checkSelfPermission(mContext, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+        if (!allowLocation || !locationGranted) {
+            final int withoutLocation = types & ~ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION;
+            if (withoutLocation != 0) {
+                types = withoutLocation;
+            }
+        }
+        return types == 0 ? FOREGROUND_SERVICE_TYPE_MANIFEST : types;
     }
 
     public void stop() {

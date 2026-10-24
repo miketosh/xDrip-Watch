@@ -164,7 +164,7 @@ public class ActivityRecognizedService extends IntentService implements GoogleAp
     private PendingIntent get_pending_intent() {
         if (mPendingIntent == null) {
             final Intent intent = new Intent(this, ActivityRecognizedService.class);
-            mPendingIntent = PendingIntent.getService(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+            mPendingIntent = com.eveningoutpost.dexdrip.utils.framework.PendingIntents.getMutableService(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
         }
         return mPendingIntent;
     }
@@ -243,7 +243,7 @@ public class ActivityRecognizedService extends IntentService implements GoogleAp
 
         Intent intent = new Intent(xdrip.getAppContext(), ErrorsActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        PendingIntent pendingIntent = PendingIntent.getActivity(xdrip.getAppContext(), 0 /* Request code */, intent,
+        PendingIntent pendingIntent = com.eveningoutpost.dexdrip.utils.framework.PendingIntents.getActivity(xdrip.getAppContext(), 0 /* Request code */, intent,
                 PendingIntent.FLAG_ONE_SHOT);
         builder.setContentText("Shut down motion detection! See Error Logs - Please report to developer" + JoH.dateTimeText(JoH.tsl()));
         builder.setContentIntent(pendingIntent);
@@ -497,7 +497,7 @@ public class ActivityRecognizedService extends IntentService implements GoogleAp
                 JoH.static_toast_long("Google Play Services update download needed for Motion");
                 Intent notificationIntent = new Intent(Intent.ACTION_VIEW);
                 notificationIntent.setData(Uri.parse("https://play.google.com/store/apps/details?id=com.google.android.gms"));
-                final PendingIntent contentIntent = PendingIntent.getActivity(this, 0, notificationIntent, 0);
+                final PendingIntent contentIntent = com.eveningoutpost.dexdrip.utils.framework.PendingIntents.getActivity(this, 0, notificationIntent, 0);
                 JoH.showNotification("Google Update Needed","Google Play Services update download needed for Motion. Download update via Google Play Store and try motion again after installed.",contentIntent,60302,true,true,true);
                 UserError.Log.ueh(TAG,"Google Play Services updated needed for motion - disabling motion for now");
                 Pref.setBoolean("motion_tracking_enabled", false);

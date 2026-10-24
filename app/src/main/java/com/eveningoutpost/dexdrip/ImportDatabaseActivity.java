@@ -65,8 +65,7 @@ public class ImportDatabaseActivity extends ListActivityWithMenu {
     }
 
     private void generateDBGui() {
-        int permissionCheck = ContextCompat.checkSelfPermission(this,
-                Manifest.permission.READ_EXTERNAL_STORAGE);
+        int permissionCheck = com.eveningoutpost.dexdrip.utils.framework.StorageAccess.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE);
         if (permissionCheck == PackageManager.PERMISSION_GRANTED && findAllDatabases()) {
             sortDatabasesAlphabetically();
             showDatabasesInList();

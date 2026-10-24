@@ -61,8 +61,7 @@ public class InstallPebbleWatchFace extends BaseAppCompatActivity {
 
     private boolean checkPermissions() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (ContextCompat.checkSelfPermission(getApplicationContext(),
-                    Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            if (com.eveningoutpost.dexdrip.utils.framework.StorageAccess.checkSelfPermission(getApplicationContext(), Manifest.permission.WRITE_EXTERNAL_STORAGE)
                     != PackageManager.PERMISSION_GRANTED) {
                 final Activity activity = this;
                 JoH.show_ok_dialog(activity, gs(R.string.please_allow_permission), "Need storage permission to install watchface", new Runnable() {

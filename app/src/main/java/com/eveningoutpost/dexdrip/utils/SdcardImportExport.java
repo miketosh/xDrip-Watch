@@ -91,8 +91,7 @@ public class SdcardImportExport extends BaseAppCompatActivity {
     // TODO refactor to own class
     public static boolean checkPermissions(Activity context, boolean ask, int request_code) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (ContextCompat.checkSelfPermission(context,
-                    Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            if (com.eveningoutpost.dexdrip.utils.framework.StorageAccess.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE)
                     != PackageManager.PERMISSION_GRANTED) {
                 if (ask) {
                     ActivityCompat.requestPermissions(context,

@@ -1007,7 +1007,7 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
                     Log.e(TAG, "Sensor not in warm up period when notification due to fire");
                     return;
                 }
-                final PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+                final PendingIntent pendingIntent = com.eveningoutpost.dexdrip.utils.framework.PendingIntents.getActivity(this, 0, notificationIntent, PendingIntent.FLAG_UPDATE_CURRENT);
                 JoH.showNotification(bundle.getString(SHOW_NOTIFICATION), bundle.getString("notification_body"), pendingIntent, notification_id, true, true, true);
                 UserError.Log.uel(TAG, bundle.getString("notification_body"));
             } else if (bundle.getString(Home.BLUETOOTH_METER_CALIBRATION) != null) {
@@ -1864,6 +1864,8 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
     @Override
     protected void onResume() {
         super.onResume();
+        // xDrip-Watch: Bluetooth, notification and All files access for target 36.
+        com.eveningoutpost.dexdrip.utils.framework.TargetSdkPermissions.requestAtStartup(this);
         xdrip.checkForcedEnglish(xdrip.getAppContext());
         handleFlairColors();
         checkEula();
@@ -1908,8 +1910,8 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
         };
 
 
-        registerReceiver(_broadcastReceiver, new IntentFilter(Intent.ACTION_TIME_TICK));
-        registerReceiver(newDataReceiver, new IntentFilter(Intents.ACTION_NEW_BG_ESTIMATE_NO_DATA));
+        com.eveningoutpost.dexdrip.utils.framework.Receivers.register(this, _broadcastReceiver, new IntentFilter(Intent.ACTION_TIME_TICK));
+        com.eveningoutpost.dexdrip.utils.framework.Receivers.register(this, newDataReceiver, new IntentFilter(Intents.ACTION_NEW_BG_ESTIMATE_NO_DATA));
 
         LocalBroadcastManager.getInstance(this).registerReceiver(statusReceiver,
                 new IntentFilter(Intents.HOME_STATUS_ACTION));
@@ -3385,8 +3387,8 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
         new AsyncTask<Void, Void, String>() {
             @Override
             protected String doInBackground(Void... params) {
-                if (ContextCompat.checkSelfPermission(Home.this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED ||
-                        ContextCompat.checkSelfPermission(Home.this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                if (com.eveningoutpost.dexdrip.utils.framework.StorageAccess.checkSelfPermission(Home.this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED ||
+                        com.eveningoutpost.dexdrip.utils.framework.StorageAccess.checkSelfPermission(Home.this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
                     ActivityCompat.requestPermissions(Home.this,
                             new String[]{Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE},
                             0);
@@ -3441,8 +3443,7 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
                 new AsyncTask<Void, Void, String>() {
                     @Override
                     protected String doInBackground(Void... params) {
-                        int permissionCheck = ContextCompat.checkSelfPermission(Home.this,
-                                Manifest.permission.READ_EXTERNAL_STORAGE);
+                        int permissionCheck = com.eveningoutpost.dexdrip.utils.framework.StorageAccess.checkSelfPermission(Home.this, Manifest.permission.READ_EXTERNAL_STORAGE);
                         if (permissionCheck != PackageManager.PERMISSION_GRANTED) {
                             ActivityCompat.requestPermissions(Home.this,
                                     new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
@@ -3792,7 +3793,7 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
     }
 
     public static PendingIntent getHomePendingIntent() {
-        return PendingIntent.getActivity(xdrip.getAppContext(), 0, new Intent(xdrip.getAppContext(), Home.class), android.app.PendingIntent.FLAG_UPDATE_CURRENT);
+        return com.eveningoutpost.dexdrip.utils.framework.PendingIntents.getActivity(xdrip.getAppContext(), 0, new Intent(xdrip.getAppContext(), Home.class), android.app.PendingIntent.FLAG_UPDATE_CURRENT);
     }
 
    /* class SnackbarUriListener implements ActionClickListener {

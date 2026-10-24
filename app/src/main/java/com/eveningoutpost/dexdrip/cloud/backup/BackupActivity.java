@@ -315,7 +315,7 @@ public class BackupActivity extends BackupBaseActivity implements BackupStatus {
     }
 
     static PendingIntent getStartIntent() {
-        return PendingIntent.getActivity(xdrip.getAppContext(), 0, new Intent(xdrip.getAppContext(), BackupActivity.class), PendingIntent.FLAG_UPDATE_CURRENT);
+        return com.eveningoutpost.dexdrip.utils.framework.PendingIntents.getActivity(xdrip.getAppContext(), 0, new Intent(xdrip.getAppContext(), BackupActivity.class), PendingIntent.FLAG_UPDATE_CURRENT);
     }
 
     static void notifySecurityError() {

@@ -1096,7 +1096,7 @@ public class Ob1G5CollectionService extends G5BaseService {
         if (future <= 0) future = 5000;
         UserError.Log.d(TAG, "Scheduling wakeup @ " + JoH.dateTimeText(tsl() + future) + " (" + info + ")");
         if (pendingIntent == null)
-            //pendingIntent = PendingIntent.getService(this, 0, new Intent(this, this.getClass()), 0);
+            //pendingIntent = com.eveningoutpost.dexdrip.utils.framework.PendingIntents.getService(this, 0, new Intent(this, this.getClass()), 0);
             pendingIntent = WakeLockTrampoline.getPendingIntent(this.getClass());
         wakeup_time = tsl() + future;
         JoH.wakeUpIntent(this, future, pendingIntent);
@@ -1162,7 +1162,7 @@ public class Ob1G5CollectionService extends G5BaseService {
         } else {
 
             try {
-                registerReceiver(mBondStateReceiver, new IntentFilter(BluetoothDevice.ACTION_BOND_STATE_CHANGED));
+                com.eveningoutpost.dexdrip.utils.framework.Receivers.register(this, mBondStateReceiver, new IntentFilter(BluetoothDevice.ACTION_BOND_STATE_CHANGED));
             } catch (Exception e) {
                 UserError.Log.e(TAG, "Could not register bond state receiver: " + e);
             }
@@ -1171,7 +1171,7 @@ public class Ob1G5CollectionService extends G5BaseService {
             pairingRequestFilter.setPriority(IntentFilter.SYSTEM_HIGH_PRIORITY - 1);
             try {
                 if (Build.VERSION.SDK_INT < 26) {
-                    registerReceiver(mPairingRequestRecevier, pairingRequestFilter);
+                    com.eveningoutpost.dexdrip.utils.framework.Receivers.register(this, mPairingRequestRecevier, pairingRequestFilter);
                 } else {
                     UserError.Log.d(TAG, "Not registering pairing receiver on Android 8+");
                 }
@@ -1998,7 +1998,7 @@ public class Ob1G5CollectionService extends G5BaseService {
             }
 
             Inevitable.task("ask initial calibration", SECOND_IN_MS * 30, () -> {
-                final PendingIntent pi = PendingIntent.getActivity(xdrip.getAppContext(), G5_CALIBRATION_REQUEST, JoH.getStartActivityIntent(c), PendingIntent.FLAG_UPDATE_CURRENT);
+                final PendingIntent pi = com.eveningoutpost.dexdrip.utils.framework.PendingIntents.getActivity(xdrip.getAppContext(), G5_CALIBRATION_REQUEST, JoH.getStartActivityIntent(c), PendingIntent.FLAG_UPDATE_CURRENT);
                 // pending intent not used on wear
                 JoH.showNotification(state.getText(), "Calibration Required", android_wear ? null : pi, G5_CALIBRATION_REQUEST, state == CalibrationState.NeedsFirstCalibration, true, false);
                 UserError.Log.uel(TAG, "Calibration Required");
@@ -2028,7 +2028,7 @@ public class Ob1G5CollectionService extends G5BaseService {
                         UserError.Log.uel(TAG, "Attempting to auto-start sensor");
                         Ob1G5StateMachine.startSensor(tsl());
                     }
-                    final PendingIntent pi = PendingIntent.getActivity(xdrip.getAppContext(), G5_SENSOR_RESTARTED, JoH.getStartActivityIntent(Home.class), PendingIntent.FLAG_UPDATE_CURRENT);
+                    final PendingIntent pi = com.eveningoutpost.dexdrip.utils.framework.PendingIntents.getActivity(xdrip.getAppContext(), G5_SENSOR_RESTARTED, JoH.getStartActivityIntent(Home.class), PendingIntent.FLAG_UPDATE_CURRENT);
                     JoH.showNotification("Auto Start", "Sensor Requesting Restart", pi, G5_SENSOR_RESTARTED, true, true, false);
                     UserError.Log.uel(TAG, "Sensor Requesting Restart");
                 } else if (staleStopAck) {
@@ -2039,7 +2039,7 @@ public class Ob1G5CollectionService extends G5BaseService {
                 }
             }
             if (!staleStopAck) {
-                final PendingIntent pi = PendingIntent.getActivity(xdrip.getAppContext(), G5_SENSOR_STARTED, JoH.getStartActivityIntent(Home.class), PendingIntent.FLAG_UPDATE_CURRENT);
+                final PendingIntent pi = com.eveningoutpost.dexdrip.utils.framework.PendingIntents.getActivity(xdrip.getAppContext(), G5_SENSOR_STARTED, JoH.getStartActivityIntent(Home.class), PendingIntent.FLAG_UPDATE_CURRENT);
                 JoH.showNotification(state.getText(), "Sensor Stopped", pi, G5_SENSOR_STARTED, true, true, false);
                 UserError.Log.ueh(TAG, "Native Sensor is now Stopped: " + state.getExtendedText());
                 Treatments.sensorStop(null, "Stopped by transmitter: " + state.getExtendedText());
@@ -2053,7 +2053,7 @@ public class Ob1G5CollectionService extends G5BaseService {
         }
 
         if (is_failed && !was_failed) {
-            final PendingIntent pi = PendingIntent.getActivity(xdrip.getAppContext(), G5_SENSOR_FAILED, JoH.getStartActivityIntent(Home.class), PendingIntent.FLAG_UPDATE_CURRENT);
+            final PendingIntent pi = com.eveningoutpost.dexdrip.utils.framework.PendingIntents.getActivity(xdrip.getAppContext(), G5_SENSOR_FAILED, JoH.getStartActivityIntent(Home.class), PendingIntent.FLAG_UPDATE_CURRENT);
             JoH.showNotification(state.getText(), "Sensor FAILED", pi, G5_SENSOR_FAILED, true, true, false);
             UserError.Log.ueh(TAG, "Native Sensor is now marked FAILED: " + state.getExtendedText());
         }

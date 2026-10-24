@@ -117,7 +117,7 @@ public class DexShareCollectionService extends Service {
         foregroundServiceStarter = new ForegroundServiceStarter(getApplicationContext(), service);
         foregroundServiceStarter.start();
         final IntentFilter bondintent = new IntentFilter(BluetoothDevice.ACTION_BOND_STATE_CHANGED);
-        registerReceiver(mPairReceiver, bondintent);
+        com.eveningoutpost.dexdrip.utils.framework.Receivers.register(this, mPairReceiver, bondintent);
         prefs = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
         listenForChangeInSettings();
         //bgToSpeech = BgToSpeech.setupTTS(getApplicationContext()); //keep reference to not being garbage collected
@@ -212,7 +212,7 @@ public class DexShareCollectionService extends Service {
             if (pendingIntent != null)
                 alarm.cancel(pendingIntent);
             long wakeTime = calendar.getTimeInMillis() + retry_in;
-            pendingIntent = PendingIntent.getService(this, 0, new Intent(this, this.getClass()),  PendingIntent.FLAG_UPDATE_CURRENT);
+            pendingIntent = com.eveningoutpost.dexdrip.utils.framework.PendingIntents.getService(this, 0, new Intent(this, this.getClass()),  PendingIntent.FLAG_UPDATE_CURRENT);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 alarm.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, wakeTime, pendingIntent);
             } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
@@ -231,7 +231,7 @@ public class DexShareCollectionService extends Service {
             if (pendingIntent != null)
                 alarm.cancel(pendingIntent);
             long wakeTime = calendar.getTimeInMillis() + retry_in;
-            pendingIntent = PendingIntent.getService(this, 0, new Intent(this, this.getClass()), 0);
+            pendingIntent = com.eveningoutpost.dexdrip.utils.framework.PendingIntents.getService(this, 0, new Intent(this, this.getClass()), 0);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 alarm.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, wakeTime, pendingIntent);
             } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
@@ -763,7 +763,7 @@ public class DexShareCollectionService extends Service {
 
     public void bondDevice() {
         final IntentFilter bondintent = new IntentFilter(BluetoothDevice.ACTION_BOND_STATE_CHANGED);
-        registerReceiver(mPairReceiver, bondintent);
+        com.eveningoutpost.dexdrip.utils.framework.Receivers.register(this, mPairReceiver, bondintent);
         if(!share2){ device.setPin("000000".getBytes()); }
         device.createBond();
     }

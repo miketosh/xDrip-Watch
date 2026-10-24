@@ -626,8 +626,7 @@ public class Reminders extends ActivityWithRecycler implements SensorEventListen
 
     private boolean checkPermissions() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (ContextCompat.checkSelfPermission(getApplicationContext(),
-                    android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            if (com.eveningoutpost.dexdrip.utils.framework.StorageAccess.checkSelfPermission(getApplicationContext(), android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
                     != PackageManager.PERMISSION_GRANTED) {
                 final Activity activity = this;
                 JoH.show_ok_dialog(activity, xdrip.getAppContext().getString(R.string.Please_Allow_Permission), xdrip.getAppContext().getString(R.string.need_storage_permission), new Runnable() {
@@ -1191,8 +1190,8 @@ public class Reminders extends ActivityWithRecycler implements SensorEventListen
                         .setAction(REMINDER_ACTION)
                         .putExtra("snooze_id", reminder.getId())
                         .putExtra(Pref.getBooleanDefaultFalse(Reminder.REMINDERS_CANCEL_DEFAULT) ? "cancel" : "snooze", "true");
-                final PendingIntent deleteIntent = PendingIntent.getBroadcast(xdrip.getAppContext(), NOTIFICATION_ID + 1, notificationDeleteIntent, FLAG_UPDATE_CURRENT);
-                final PendingIntent pendingIntent = PendingIntent.getActivity(xdrip.getAppContext(), NOTIFICATION_ID, notificationIntent, FLAG_UPDATE_CURRENT);
+                final PendingIntent deleteIntent = com.eveningoutpost.dexdrip.utils.framework.PendingIntents.getBroadcast(xdrip.getAppContext(), NOTIFICATION_ID + 1, notificationDeleteIntent, FLAG_UPDATE_CURRENT);
+                final PendingIntent pendingIntent = com.eveningoutpost.dexdrip.utils.framework.PendingIntents.getActivity(xdrip.getAppContext(), NOTIFICATION_ID, notificationIntent, FLAG_UPDATE_CURRENT);
 
                 if (reminder.graphicon) {
                     Treatments.create_note("Reminder"+": " + reminder.getTitle(), tsl());

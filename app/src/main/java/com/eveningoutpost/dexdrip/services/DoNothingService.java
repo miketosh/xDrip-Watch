@@ -179,7 +179,7 @@ public class DoNothingService extends Service {
             final long retry_in = Constants.MINUTE_IN_MS * 10;
             UserError.Log.d(TAG, "setFailoverTimer: Restarting in: " + (retry_in / Constants.MINUTE_IN_MS) + " minutes");
             nextWakeUpTime = JoH.tsl() + retry_in;
-            //final PendingIntent wakeIntent = PendingIntent.getService(this, 0, new Intent(this, this.getClass()), 0);
+            //final PendingIntent wakeIntent = com.eveningoutpost.dexdrip.utils.framework.PendingIntents.getService(this, 0, new Intent(this, this.getClass()), 0);
             final PendingIntent wakeIntent = WakeLockTrampoline.getPendingIntent(this.getClass());
             JoH.wakeUpIntent(this, retry_in, wakeIntent);
 

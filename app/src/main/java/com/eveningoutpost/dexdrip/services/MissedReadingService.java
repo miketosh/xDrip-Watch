@@ -210,7 +210,7 @@ public class MissedReadingService extends IntentService {
         if (serviceIntent == null) {
             synchronized (this) {
                 if (serviceIntent == null) {
-                    serviceIntent = PendingIntent.getService(this, Constants.MISSED_READING_SERVICE_ID, new Intent(this, this.getClass()), 0);
+                    serviceIntent = com.eveningoutpost.dexdrip.utils.framework.PendingIntents.getService(this, Constants.MISSED_READING_SERVICE_ID, new Intent(this, this.getClass()), 0);
                 }
             }
         }

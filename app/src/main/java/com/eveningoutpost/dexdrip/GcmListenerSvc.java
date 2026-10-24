@@ -384,7 +384,7 @@ public class GcmListenerSvc extends JamListenerSvc {
                             final String[] payloadA = payload.split("\\^");
                             final String title = payloadA[0];
                             final String body = payloadA[1];
-                            final PendingIntent pendingIntent = android.app.PendingIntent.getActivity(xdrip.getAppContext(), 0, new Intent(xdrip.getAppContext(), Home.class), android.app.PendingIntent.FLAG_UPDATE_CURRENT);
+                            final PendingIntent pendingIntent = com.eveningoutpost.dexdrip.utils.framework.PendingIntents.getActivity(xdrip.getAppContext(), 0, new Intent(xdrip.getAppContext(), Home.class), android.app.PendingIntent.FLAG_UPDATE_CURRENT);
                             showNotification(title, body, pendingIntent, GCM_NOTIFICATION_ITEM, true, true, false);
                             UserError.Log.uel(TAG, "Follower Notification with payload");
                         } catch (Exception e) {
@@ -621,7 +621,7 @@ public class GcmListenerSvc extends JamListenerSvc {
     private void sendNotification(String body, String title) {
         Intent intent = new Intent(this, Home.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0 /* Request code */, intent,
+        PendingIntent pendingIntent = com.eveningoutpost.dexdrip.utils.framework.PendingIntents.getActivity(this, 0 /* Request code */, intent,
                 PendingIntent.FLAG_ONE_SHOT);
 
         Uri defaultSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);

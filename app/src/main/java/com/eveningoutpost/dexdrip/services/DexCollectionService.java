@@ -1219,7 +1219,7 @@ public class DexCollectionService extends Service implements BtCallBack {
         final IntentFilter pairingRequestFilter = new IntentFilter(BluetoothDevice.ACTION_PAIRING_REQUEST);
         pairingRequestFilter.setPriority(IntentFilter.SYSTEM_HIGH_PRIORITY - 1);
         if (Build.VERSION.SDK_INT < 26) {
-            registerReceiver(mPairingRequestRecevier, pairingRequestFilter);
+            com.eveningoutpost.dexdrip.utils.framework.Receivers.register(this, mPairingRequestRecevier, pairingRequestFilter);
         } else {
             Log.d(TAG, "Not starting pairing request receiver on android 8+");
         }
@@ -1343,7 +1343,7 @@ public class DexCollectionService extends Service implements BtCallBack {
             //final long retry_in = (Constants.SECOND_IN_MS * 25);
             final long retry_in = (useAnticipate && last_connected > 0) ? (Anticipate.next(tsl(),last_connected, 120_000, 15) - tsl()) : whenToRetryNext();
             Log.d(TAG, "setRetryTimer: Restarting in: " + (retry_in / Constants.SECOND_IN_MS) + " seconds - last connected: "+JoH.dateTimeText(last_connected));
-            //serviceIntent = PendingIntent.getService(this, Constants.DEX_COLLECTION_SERVICE_RETRY_ID, new Intent(this, this.getClass()), 0);
+            //serviceIntent = com.eveningoutpost.dexdrip.utils.framework.PendingIntents.getService(this, Constants.DEX_COLLECTION_SERVICE_RETRY_ID, new Intent(this, this.getClass()), 0);
             serviceIntent = WakeLockTrampoline.getPendingIntent(this.getClass(), Constants.DEX_COLLECTION_SERVICE_RETRY_ID);
             retry_time = JoH.wakeUpIntent(this, retry_in, serviceIntent);
         } else {
@@ -1355,7 +1355,7 @@ public class DexCollectionService extends Service implements BtCallBack {
         if (shouldServiceRun()) {
             final long retry_in = use_polling ? whenToPollNext() : (Constants.MINUTE_IN_MS * 6);
             Log.d(TAG, "setFailoverTimer: Fallover Restarting in: " + (retry_in / (Constants.MINUTE_IN_MS)) + " minutes");
-            //serviceFailoverIntent = PendingIntent.getService(this, Constants.DEX_COLLECTION_SERVICE_FAILOVER_ID, new Intent(this, this.getClass()), 0);
+            //serviceFailoverIntent = com.eveningoutpost.dexdrip.utils.framework.PendingIntents.getService(this, Constants.DEX_COLLECTION_SERVICE_FAILOVER_ID, new Intent(this, this.getClass()), 0);
             serviceFailoverIntent = WakeLockTrampoline.getPendingIntent(this.getClass(), Constants.DEX_COLLECTION_SERVICE_FAILOVER_ID);
             failover_time = JoH.wakeUpIntent(this, retry_in, serviceFailoverIntent);
             retry_time = 0; // only one alarm will run

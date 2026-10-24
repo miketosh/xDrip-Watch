@@ -266,8 +266,7 @@ public class AlertList extends ActivityWithMenu {
 
     private boolean checkStoragePermissions(String msg) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (ContextCompat.checkSelfPermission(getApplicationContext(),
-                    android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            if (com.eveningoutpost.dexdrip.utils.framework.StorageAccess.checkSelfPermission(getApplicationContext(), android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
                     != PackageManager.PERMISSION_GRANTED) {
                 final Activity activity = this;
                 JoH.show_ok_dialog(activity, gs(R.string.please_allow_permission), msg, () -> ActivityCompat.requestPermissions(activity,

@@ -89,6 +89,12 @@ public class UpdateActivity extends BaseAppCompatActivity {
     }
 
     public static void checkForAnUpdate(final Context context, final boolean fromUi) {
+        // xDrip-Watch: the official update channel offers upstream builds, which are
+        // signed with another key and cannot install over this fork. Never offer them.
+        if (true) {
+            Log.i(TAG, "Update check disabled in the xDrip-Watch fork");
+            return;
+        }
         if (prefs == null) prefs = PreferenceManager.getDefaultSharedPreferences(context);
         if ((last_check_time != -1) && (!prefs.getBoolean(AUTO_UPDATE_PREFS_NAME, true))) return;
         String channel = prefs.getString("update_channel", "beta");
@@ -294,8 +300,7 @@ public class UpdateActivity extends BaseAppCompatActivity {
     }
 
     private boolean checkPermissions() {
-        if (ContextCompat.checkSelfPermission(getApplicationContext(),
-                Manifest.permission.WRITE_EXTERNAL_STORAGE)
+        if (com.eveningoutpost.dexdrip.utils.framework.StorageAccess.checkSelfPermission(getApplicationContext(), Manifest.permission.WRITE_EXTERNAL_STORAGE)
                 != PackageManager.PERMISSION_GRANTED) {
 
             ActivityCompat.requestPermissions(this,

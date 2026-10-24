@@ -201,7 +201,7 @@ public class CompatibleApps extends BroadcastReceiver {
     }
 
     public static PendingIntent createActionIntent(int parent_id, int id, Feature action) {
-        return PendingIntent.getBroadcast(xdrip.getAppContext(), id,
+        return com.eveningoutpost.dexdrip.utils.framework.PendingIntents.getBroadcast(xdrip.getAppContext(), id,
                 new Intent(xdrip.getAppContext(), CompatibleApps.class)
                         .putExtra("action", action)
                         .putExtra("id", parent_id)
@@ -210,7 +210,7 @@ public class CompatibleApps extends BroadcastReceiver {
     }
 
     public static PendingIntent createChoiceIntent(int parent_id, int id, Feature action, String title, String msg) {
-        return PendingIntent.getBroadcast(xdrip.getAppContext(), id,
+        return com.eveningoutpost.dexdrip.utils.framework.PendingIntents.getBroadcast(xdrip.getAppContext(), id,
                 new Intent(xdrip.getAppContext(), CompatibleApps.class)
                         .putExtra("action", Feature.CHOICE)
                         .putExtra("choice", action)

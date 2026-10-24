@@ -381,7 +381,7 @@ public class Reminder extends Model {
                             .where("enabled = ?", true)
                             .executeSingle();
                     if (reminder != null) {
-                        // PendingIntent serviceIntent = PendingIntent.getService(xdrip.getAppContext(), 0, new Intent(xdrip.getAppContext(), MissedReadingService.class), PendingIntent.FLAG_UPDATE_CURRENT);
+                        // PendingIntent serviceIntent = com.eveningoutpost.dexdrip.utils.framework.PendingIntents.getService(xdrip.getAppContext(), 0, new Intent(xdrip.getAppContext(), MissedReadingService.class), PendingIntent.FLAG_UPDATE_CURRENT);
                         // PendingIntent serviceIntent = WakeLockTrampoline.getPendingIntent(MissedReadingService.class);
                         //  JoH.wakeUpIntent(xdrip.getAppContext(), Constants.MINUTE_IN_MS, serviceIntent);
                         //  UserError.Log.ueh(TAG, "Starting missed readings service");

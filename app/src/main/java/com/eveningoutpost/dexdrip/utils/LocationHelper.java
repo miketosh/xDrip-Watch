@@ -24,7 +24,8 @@ import com.eveningoutpost.dexdrip.utilitymodels.Inevitable;
 public class LocationHelper {
 
     static final String TAG = "xDrip LocationHelper";
-    private static final boolean newType = false;
+    // xDrip-Watch: Android 12 Bluetooth permissions apply from target 31.
+    private static final boolean newType = com.eveningoutpost.dexdrip.BuildConfig.targetSDK >= 31;
     /**
      * Determine if Network provider is currently enabled.
      *

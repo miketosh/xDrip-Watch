@@ -1585,7 +1585,7 @@ public class JoH {
 
     public static void scheduleNotification(Context context, String title, String body, int delaySeconds, int notification_id) {
         final Intent notificationIntent = new Intent(context, Home.class).putExtra(Home.SHOW_NOTIFICATION, title).putExtra("notification_body", body).putExtra("notification_id", notification_id);
-        final PendingIntent pendingIntent = PendingIntent.getActivity(context, notification_id, notificationIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+        final PendingIntent pendingIntent = com.eveningoutpost.dexdrip.utils.framework.PendingIntents.getActivity(context, notification_id, notificationIntent, PendingIntent.FLAG_UPDATE_CURRENT);
         Log.d(TAG, "Scheduling notification: " + title + " / " + body);
         wakeUpIntent(context, delaySeconds * 1000, pendingIntent);
     }

@@ -539,7 +539,7 @@ public class AlertPlayer {
     }
 
     public PendingIntent notificationIntent(Context ctx, Intent intent){
-        return PendingIntent.getActivity(ctx, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        return com.eveningoutpost.dexdrip.utils.framework.PendingIntents.getActivity(ctx, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
     }
     private PendingIntent snoozeIntent(Context ctx, int minsSinceStartPlaying){
@@ -547,7 +547,7 @@ public class AlertPlayer {
         intent.putExtra("alertType", "bg_alerts");
         intent.putExtra("raisedTimeStamp", JoH.tsl());
         intent.putExtra("minsSinceStartPlaying", minsSinceStartPlaying);
-        return PendingIntent.getService(ctx, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+        return com.eveningoutpost.dexdrip.utils.framework.PendingIntents.getService(ctx, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
     }
 
     static private int getAlertProfile(Context ctx){

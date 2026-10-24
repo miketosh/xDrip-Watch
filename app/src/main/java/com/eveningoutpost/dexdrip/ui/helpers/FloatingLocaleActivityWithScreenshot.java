@@ -60,8 +60,7 @@ public abstract class FloatingLocaleActivityWithScreenshot extends ActivityWithM
     }
 
     private boolean checkPermissions() {
-        if (ContextCompat.checkSelfPermission(getApplicationContext(),
-                Manifest.permission.WRITE_EXTERNAL_STORAGE)
+        if (com.eveningoutpost.dexdrip.utils.framework.StorageAccess.checkSelfPermission(getApplicationContext(), Manifest.permission.WRITE_EXTERNAL_STORAGE)
                 != PackageManager.PERMISSION_GRANTED) {
 
             ActivityCompat.requestPermissions(this,

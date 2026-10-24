@@ -85,7 +85,7 @@ public class BackgroundScanReceiver extends BroadcastReceiver {
                 if (!calledBack) {
                     try {
                         // bit of an ugly fix to system wide persistent nature of background scans and lack of proper support for one hit over various android devices
-                        backgroundScanner.stopBackgroundBleScan(PendingIntent.getBroadcast(xdrip.getAppContext(), 142, // must match original
+                        backgroundScanner.stopBackgroundBleScan(com.eveningoutpost.dexdrip.utils.framework.PendingIntents.getMutableBroadcast(xdrip.getAppContext(), 142, // must match original
                                 intent, PendingIntent.FLAG_UPDATE_CURRENT));
                     } catch (Exception e) {
                         //

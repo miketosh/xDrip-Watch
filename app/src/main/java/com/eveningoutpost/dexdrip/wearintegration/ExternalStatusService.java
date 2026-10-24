@@ -50,7 +50,11 @@ public class ExternalStatusService extends android.app.Service {
         builder.setContentTitle("xDrip External Status")
                 .setSmallIcon(com.eveningoutpost.dexdrip.R.drawable.ic_launcher);
 
-        startForeground(124, builder.build());
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            startForeground(124, builder.build(), android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
+        } else {
+            startForeground(124, builder.build());
+        }
     }
 
     @Override

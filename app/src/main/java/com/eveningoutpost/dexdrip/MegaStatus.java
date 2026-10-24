@@ -149,7 +149,7 @@ public class MegaStatus extends FloatingLocaleActivityWithScreenshot {
     public static PendingIntent getStatusPendingIntent(String section_name) {
         final Intent intent = new Intent(xdrip.getAppContext(), MegaStatus.class);
         intent.setAction(section_name);
-        return PendingIntent.getActivity(xdrip.getAppContext(), 0, intent, android.app.PendingIntent.FLAG_UPDATE_CURRENT);
+        return com.eveningoutpost.dexdrip.utils.framework.PendingIntents.getActivity(xdrip.getAppContext(), 0, intent, android.app.PendingIntent.FLAG_UPDATE_CURRENT);
     }
 
     public static void startStatus(String section_name) {

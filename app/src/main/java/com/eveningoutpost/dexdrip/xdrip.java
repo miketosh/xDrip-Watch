@@ -81,6 +81,8 @@ public class xdrip extends Application {
     public void onCreate() {
         xdrip.context = getApplicationContext();
         super.onCreate();
+        // xDrip-Watch: keep screens clear of the system bars at target 36.
+        com.eveningoutpost.dexdrip.utils.framework.EdgeToEdgeInsets.register(this);
         JodaTimeAndroid.init(this);
         try {
             if (PreferenceManager.getDefaultSharedPreferences(xdrip.context).getBoolean("enable_crashlytics", true)) {
@@ -113,7 +115,7 @@ public class xdrip extends Application {
         bgFilter.addAction("com.eveningoutpost.dexdrip.OOP2_DECODE_BLE_RESULT");
         bgFilter.addAction("com.eveningoutpost.dexdrip.OOP2_BLUETOOTH_ENABLE_RESULT");
 
-        registerReceiver(new NSEmulatorReceiver() {
+        com.eveningoutpost.dexdrip.utils.framework.Receivers.register(this, new NSEmulatorReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
                 if (intent.getComponent() != null) return; // Ignore Explicit (Manifest handles it)
@@ -121,7 +123,7 @@ public class xdrip extends Application {
             }
         }, bgFilter);
 
-        registerReceiver(new ExternalStatusBroadcastReceiver() {
+        com.eveningoutpost.dexdrip.utils.framework.Receivers.register(this, new ExternalStatusBroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
                 if (intent.getComponent() != null) return; // Ignore Explicit

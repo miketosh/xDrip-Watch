@@ -47,7 +47,7 @@ public class SyncService extends IntentService {
         if (delay == 0) {
             xdrip.getAppContext().startService(new Intent(xdrip.getAppContext(), SyncService.class));
         } else {
-            final PendingIntent serviceIntent = PendingIntent.getService(xdrip.getAppContext(), SYNC_QUEUE_RETRY_ID, new Intent(xdrip.getAppContext(), SyncService.class), PendingIntent.FLAG_CANCEL_CURRENT);
+            final PendingIntent serviceIntent = com.eveningoutpost.dexdrip.utils.framework.PendingIntents.getService(xdrip.getAppContext(), SYNC_QUEUE_RETRY_ID, new Intent(xdrip.getAppContext(), SyncService.class), PendingIntent.FLAG_CANCEL_CURRENT);
             JoH.wakeUpIntent(xdrip.getAppContext(), delay, serviceIntent);
         }
     }

@@ -162,8 +162,8 @@ public class AuthFlowOut {
                     try {
                         getAuthService().performAuthorizationRequest(
                                 authRequest,
-                                PendingIntent.getActivity(context, 0, new Intent(context, AuthFlowIn.class), PendingIntent.FLAG_MUTABLE),
-                                PendingIntent.getActivity(context, 0, new Intent(context, AuthFlowIn.class), PendingIntent.FLAG_MUTABLE));
+                                com.eveningoutpost.dexdrip.utils.framework.PendingIntents.getActivity(context, 0, new Intent(context, AuthFlowIn.class), PendingIntent.FLAG_MUTABLE),
+                                com.eveningoutpost.dexdrip.utils.framework.PendingIntents.getActivity(context, 0, new Intent(context, AuthFlowIn.class), PendingIntent.FLAG_MUTABLE));
                     } catch (Exception e) {
                         val msg = "Tidepool: exception when trying to perform authorization. Is Chrome installed? "+e;
                         Log.wtf(TAG, msg);

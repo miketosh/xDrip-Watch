@@ -497,7 +497,7 @@ public class LeFunService extends JamBaseBluetoothSequencer {
             final long retry_in = whenToRetryNext();
             UserError.Log.d(TAG, "setRetryTimer: Restarting in: " + (retry_in / Constants.SECOND_IN_MS) + " seconds");
             I.serviceIntent = WakeLockTrampoline.getPendingIntent(this.getClass(), Constants.LEFUN_SERVICE_RETRY_ID);
-            //PendingIntent.getService(xdrip.getAppContext(), Constants.LEFUN_SERVICE_RETRY_ID,
+            //com.eveningoutpost.dexdrip.utils.framework.PendingIntents.getService(xdrip.getAppContext(), Constants.LEFUN_SERVICE_RETRY_ID,
             //        new Intent(xdrip.getAppContext(), this.getClass()), 0);
             I.retry_time = JoH.wakeUpIntent(xdrip.getAppContext(), retry_in, I.serviceIntent);
             I.wakeup_time = JoH.tsl() + retry_in;

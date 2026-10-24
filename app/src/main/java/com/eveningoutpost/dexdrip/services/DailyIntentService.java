@@ -51,7 +51,7 @@ public class DailyIntentService extends IntentService {
     // if we have alarm manager hangovers from previous scheduling methodology then cancel it
     private void cancelSelf() {
         try {
-            final PendingIntent pi = PendingIntent.getService(xdrip.getAppContext(), 0, new Intent(this, DailyIntentService.class), PendingIntent.FLAG_UPDATE_CURRENT);
+            final PendingIntent pi = com.eveningoutpost.dexdrip.utils.framework.PendingIntents.getService(xdrip.getAppContext(), 0, new Intent(this, DailyIntentService.class), PendingIntent.FLAG_UPDATE_CURRENT);
             final AlarmManager am = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
             am.cancel(pi);
         } catch (Exception e) {

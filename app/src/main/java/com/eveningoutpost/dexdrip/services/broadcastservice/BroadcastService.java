@@ -231,7 +231,7 @@ public class BroadcastService extends Service {
     public void onCreate() {
         UserError.Log.e(TAG, "starting service");
         broadcastEntities = new HashMap<>();
-        registerReceiver(broadcastReceiver, new IntentFilter(ACTION_WATCH_COMMUNICATION_RECEIVER));
+        com.eveningoutpost.dexdrip.utils.framework.Receivers.register(this, broadcastReceiver, new IntentFilter(ACTION_WATCH_COMMUNICATION_RECEIVER));
 
         JoH.startService(BroadcastService.class, Const.INTENT_FUNCTION_KEY, Const.CMD_START);
 

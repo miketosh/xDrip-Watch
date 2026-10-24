@@ -53,7 +53,7 @@ public class xDripWidget extends AppWidgetProvider {
 
         //Add behaviour: open xDrip on click
         Intent intent = new Intent(context, Home.class);
-        PendingIntent pendingIntent = PendingIntent.getActivity(context, 0, intent, 0);
+        PendingIntent pendingIntent = com.eveningoutpost.dexdrip.utils.framework.PendingIntents.getActivity(context, 0, intent, 0);
         views.setOnClickPendingIntent(R.id.xDripwidget, pendingIntent);
         displayCurrentInfo(appWidgetManager, appWidgetId, context, views);
         try {

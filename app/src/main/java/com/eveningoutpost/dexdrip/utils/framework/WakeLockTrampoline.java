@@ -104,7 +104,7 @@ public class WakeLockTrampoline extends BroadcastReceiver {
                     UserError.Log.d(TAG, "Recurring schedule id: " + scheduleId + " for " + existing);
             }
         }
-        return PendingIntent.getBroadcast(xdrip.getAppContext(), scheduleId, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+        return com.eveningoutpost.dexdrip.utils.framework.PendingIntents.getBroadcast(xdrip.getAppContext(), scheduleId, intent, PendingIntent.FLAG_UPDATE_CURRENT);
     }
 
     private static Class getClassFromName(final String name) {

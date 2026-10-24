@@ -204,12 +204,12 @@ public class G5CollectionService extends G5BaseService {
 
         final IntentFilter bondintent = new IntentFilter(BluetoothDevice.ACTION_BOND_STATE_CHANGED);//KS turn on
         bondintent.addAction(BluetoothDevice.ACTION_FOUND);//KS add
-        registerReceiver(mPairReceiver, bondintent);//KS turn on
+        com.eveningoutpost.dexdrip.utils.framework.Receivers.register(this, mPairReceiver, bondintent);//KS turn on
 
         final IntentFilter pairingRequestFilter = new IntentFilter(BluetoothDevice.ACTION_PAIRING_REQUEST);
         pairingRequestFilter.setPriority(IntentFilter.SYSTEM_HIGH_PRIORITY - 1);
         if (Build.VERSION.SDK_INT < 26) {
-            registerReceiver(mPairingRequestRecevier, pairingRequestFilter);
+            com.eveningoutpost.dexdrip.utils.framework.Receivers.register(this, mPairingRequestRecevier, pairingRequestFilter);
         } else {
             UserError.Log.d(TAG, "Not registering pairing receiver on Android 8+");
         }
@@ -460,7 +460,7 @@ public class G5CollectionService extends G5BaseService {
             AlarmManager alarm = (AlarmManager) getSystemService(ALARM_SERVICE);
             if (pendingIntent != null)
                 alarm.cancel(pendingIntent);
-            pendingIntent = PendingIntent.getService(this, 0, new Intent(this, this.getClass()), 0);
+            pendingIntent = com.eveningoutpost.dexdrip.utils.framework.PendingIntents.getService(this, 0, new Intent(this, this.getClass()), 0);
             // TODO use wakeIntent feature
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 alarm.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, wakeTime, pendingIntent);

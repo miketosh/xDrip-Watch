@@ -2724,7 +2724,7 @@ public class Preferences extends BasePreferenceActivity implements SearchPrefere
 
             // TODO call log permission - especially for Android 9+
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                if (xdrip.getAppContext().checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE)
+                if (com.eveningoutpost.dexdrip.utils.framework.StorageAccess.checkSelfPermission(xdrip.getAppContext(), Manifest.permission.READ_EXTERNAL_STORAGE)
                         != PackageManager.PERMISSION_GRANTED) {
 
                     ActivityCompat.requestPermissions(activity,
