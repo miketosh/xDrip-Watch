@@ -7,8 +7,7 @@ import android.widget.TextView;
 
 /**
  * xDrip-Watch P1: sends one test message to the G7 Scout watch app and shows
- * the SDK's status lines. Start with
- * adb shell am start -n com.eveningoutpost.dexdrip.garminbridge/com.eveningoutpost.dexdrip.garmin.GarminBridgeTestActivity
+ * the SDK's status lines. Opened from its "Garmin bridge test" launcher icon.
  */
 public class GarminBridgeTestActivity extends Activity {
 

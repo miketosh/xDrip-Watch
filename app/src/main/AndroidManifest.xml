@@ -119,11 +119,16 @@
         android:theme="@style/AppTheme"
         android:usesCleartextTraffic="true">
         <!-- xDrip-Watch: sends a test message to the G7 Scout Garmin app.
-             Exported so it can be started with adb during the bridge tests. -->
+             Has its own launcher icon so it can be opened without adb. -->
         <activity
             android:name=".garmin.GarminBridgeTestActivity"
             android:label="Garmin bridge test"
-            android:exported="true" />
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
         <activity
             android:name=".cgm.glupro.GluProActivity"
             android:label="@string/glupro_activity_title"
