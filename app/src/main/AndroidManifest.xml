@@ -118,6 +118,12 @@
         android:requestLegacyExternalStorage="true"
         android:theme="@style/AppTheme"
         android:usesCleartextTraffic="true">
+        <!-- xDrip-Watch: sends a test message to the G7 Scout Garmin app.
+             Exported so it can be started with adb during the bridge tests. -->
+        <activity
+            android:name=".garmin.GarminBridgeTestActivity"
+            android:label="Garmin bridge test"
+            android:exported="true" />
         <activity
             android:name=".cgm.glupro.GluProActivity"
             android:label="@string/glupro_activity_title"

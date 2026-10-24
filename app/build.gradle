@@ -177,6 +177,9 @@ android {
             shrinkResources false
             ext.enableCrashlytics = false
             ext.alwaysUpdateBuildId = false
+            // xDrip-Watch: install next to the production xDrip while the
+            // Garmin bridge is tested (docs: garmin7-scout XDRIP_WATCH_BRIDGE.md).
+            applicationIdSuffix ".garminbridge"
             versionNameSuffix "-debug"
             debuggable true
             signingConfig debug.signingConfig
@@ -218,7 +221,9 @@ android {
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
     implementation 'androidx.constraintlayout:constraintlayout:1.1.3'
-    wearApp project(':wear')
+    // xDrip-Watch: embed the Wear OS app only in prod; the fast flavor's dev
+    // build uses the .garminbridge suffix, and the micro app must share the package.
+    prodWearApp project(':wear')
     //weapApp files('../wear/build/outputs/apk/wear_release.apk')
     implementation('com.github.nightscout:android-uploader:CORE_FOR_XDRIP') {
         transitive = false
@@ -228,6 +233,8 @@ dependencies {
     implementation project(':ipluginda')
     implementation project(':libkeks')
     implementation project(':libglupro')
+    // xDrip-Watch: phone-to-watch messages for the G7 Scout Connect IQ app.
+    implementation 'com.garmin.connectiq:ciq-companion-app-sdk:2.4.0@aar'
 
     // add missing JAXB dependencies for JDK 9+
     if (JavaVersion.current().ordinal() >= JavaVersion.VERSION_1_9.ordinal()) {
