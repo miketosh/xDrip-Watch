@@ -2,12 +2,14 @@ package com.eveningoutpost.dexdrip.garmin;
 
 import android.app.Activity;
 import android.os.Bundle;
+import android.widget.Button;
+import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
 /**
- * xDrip-Watch P1: sends one test message to the G7 Scout watch app and shows
- * the SDK's status lines. Opened from its "Garmin bridge test" launcher icon.
+ * xDrip-Watch bridge test screen, opened from its "Garmin bridge test"
+ * launcher icon. P1 sends a ping on open; P2 adds sending the saved G7 key.
  */
 public class GarminBridgeTestActivity extends Activity {
 
@@ -16,14 +18,43 @@ public class GarminBridgeTestActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        final LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(32, 32, 32, 32);
+
+        final Button ping = new Button(this);
+        ping.setText("Send ping");
+        ping.setOnClickListener(v -> GarminBridge.sendTestMessage(this, this::post));
+        layout.addView(ping);
+
+        // Sends a secret to the watch: confirm with a second tap.
+        final Button key = new Button(this);
+        key.setText("Send G7 key to watch");
+        key.setOnClickListener(v -> {
+            if (key.getTag() == null) {
+                key.setTag(Boolean.TRUE);
+                key.setText("Tap again to send the key");
+            } else {
+                key.setTag(null);
+                key.setText("Send G7 key to watch");
+                GarminBridge.sendKey(this, this::post);
+            }
+        });
+        layout.addView(key);
+
         output = new TextView(this);
-        output.setPadding(32, 32, 32, 32);
         output.setTextIsSelectable(true);
+        layout.addView(output);
+
         final ScrollView scroll = new ScrollView(this);
-        scroll.addView(output);
+        scroll.addView(layout);
         setContentView(scroll);
         append("Garmin bridge test, watch app " + GarminBridge.WATCH_APP_ID);
-        GarminBridge.sendTestMessage(this, line -> runOnUiThread(() -> append(line)));
+        GarminBridge.sendTestMessage(this, this::post);
+    }
+
+    private void post(String line) {
+        runOnUiThread(() -> append(line));
     }
 
     private void append(String line) {

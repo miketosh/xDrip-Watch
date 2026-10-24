@@ -2,7 +2,9 @@ package com.eveningoutpost.dexdrip.garmin;
 
 import android.content.Context;
 
+import com.eveningoutpost.dexdrip.models.JoH;
 import com.eveningoutpost.dexdrip.models.UserError;
+import com.eveningoutpost.dexdrip.services.Ob1G5CollectionService;
 import com.garmin.android.connectiq.ConnectIQ;
 import com.garmin.android.connectiq.IQApp;
 import com.garmin.android.connectiq.IQDevice;
@@ -15,7 +17,8 @@ import java.util.Map;
  * xDrip-Watch: messages from xDrip to the G7 Scout Connect IQ watch app
  * (github.com/miketosh/garmin7-scout), via Garmin Connect on the phone.
  *
- * Phase P1 only sends a test message; see docs/XDRIP_WATCH_BRIDGE.md there.
+ * P1 sends a test ping; P2 sends the saved G7 key so the watch can
+ * authenticate directly. See docs/XDRIP_WATCH_BRIDGE.md there.
  */
 public class GarminBridge {
 
@@ -31,14 +34,42 @@ public class GarminBridge {
     private static ConnectIQ connectIQ;
     private static boolean ready;
 
-    /** Initializes the SDK if needed, then sends one test message to every known watch. */
-    public static synchronized void sendTestMessage(Context context, StatusListener listener) {
+    /** Sends one test message to every known watch. */
+    public static void sendTestMessage(Context context, StatusListener listener) {
+        final Map<String, Object> message = new HashMap<>();
+        message.put("t", "ping");
+        message.put("v", 1);
+        message.put("ts", System.currentTimeMillis() / 1000);
+        send(context, message, listener);
+    }
+
+    /**
+     * Sends the G7 key xDrip saved after pairing. The key is a secret: it is
+     * never logged here, only whether one was available.
+     */
+    public static void sendKey(Context context, StatusListener listener) {
+        final byte[] key = Ob1G5CollectionService.getKeksKeyForBridge();
+        if (key == null) {
+            report(listener, "No saved G7 key yet: wait for xDrip to take a reading, then retry");
+            return;
+        }
+        final Map<String, Object> message = new HashMap<>();
+        message.put("t", "key");
+        message.put("v", 1);
+        message.put("tx", Ob1G5CollectionService.getTransmitterID());
+        message.put("key", JoH.bytesToHex(key));
+        report(listener, "Sending saved G7 key (16 bytes) for transmitter " + Ob1G5CollectionService.getTransmitterID());
+        send(context, message, listener);
+    }
+
+    /** Initializes the SDK if needed, then sends the message to every known watch. */
+    private static synchronized void send(Context context, Map<String, Object> message, StatusListener listener) {
         final Context app = context.getApplicationContext();
         if (connectIQ == null) {
             connectIQ = ConnectIQ.getInstance(app, ConnectIQ.IQConnectType.WIRELESS);
         }
         if (ready) {
-            sendToKnownDevices(listener);
+            sendToKnownDevices(message, listener);
             return;
         }
         report(listener, "Initializing Connect IQ SDK");
@@ -47,7 +78,7 @@ public class GarminBridge {
             public void onSdkReady() {
                 ready = true;
                 report(listener, "SDK ready");
-                sendToKnownDevices(listener);
+                sendToKnownDevices(message, listener);
             }
 
             @Override
@@ -63,7 +94,7 @@ public class GarminBridge {
         });
     }
 
-    private static void sendToKnownDevices(StatusListener listener) {
+    private static void sendToKnownDevices(Map<String, Object> message, StatusListener listener) {
         final List<IQDevice> devices;
         try {
             devices = connectIQ.getKnownDevices();
@@ -84,13 +115,9 @@ public class GarminBridge {
                 status = "unknown (" + e + ")";
             }
             report(listener, "Device " + device.getFriendlyName() + " status=" + status);
-            final Map<String, Object> message = new HashMap<>();
-            message.put("t", "ping");
-            message.put("v", 1);
-            message.put("ts", System.currentTimeMillis() / 1000);
             try {
                 connectIQ.sendMessage(device, watchApp, message, (d, a, messageStatus) ->
-                        report(listener, "Send to " + d.getFriendlyName() + ": " + messageStatus));
+                        report(listener, "Send " + message.get("t") + " to " + d.getFriendlyName() + ": " + messageStatus));
             } catch (Exception e) {
                 report(listener, "sendMessage failed: " + e);
             }
