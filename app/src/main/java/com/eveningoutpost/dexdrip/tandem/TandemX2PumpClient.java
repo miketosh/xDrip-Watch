@@ -23,6 +23,13 @@ import com.jwoglom.pumpx2.pump.messages.request.currentStatus.CurrentBolusStatus
 import com.jwoglom.pumpx2.pump.messages.request.currentStatus.NonControlIQIOBRequest;
 import com.jwoglom.pumpx2.pump.messages.request.currentStatus.PumpVersionRequest;
 import com.jwoglom.pumpx2.pump.messages.request.currentStatus.TimeSinceResetRequest;
+import com.jwoglom.pumpx2.pump.messages.request.control.InitiateBolusRequest;
+import com.jwoglom.pumpx2.pump.messages.response.control.BolusPermissionReleaseResponse;
+import com.jwoglom.pumpx2.pump.messages.response.control.BolusPermissionResponse;
+import com.jwoglom.pumpx2.pump.messages.response.control.CancelBolusResponse;
+import com.jwoglom.pumpx2.pump.messages.response.control.InitiateBolusResponse;
+import com.jwoglom.pumpx2.pump.messages.response.currentStatus.BolusCalcDataSnapshotResponse;
+import com.eveningoutpost.dexdrip.BuildConfig;
 import com.jwoglom.pumpx2.pump.messages.response.authentication.AbstractCentralChallengeResponse;
 import com.jwoglom.pumpx2.pump.messages.response.authentication.AbstractPumpChallengeResponse;
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.ControlIQIOBResponse;
@@ -45,8 +52,10 @@ import java.util.Set;
  *
  * Safety boundary: {@link TandemX2RequestPolicy} decides every outgoing message. Listen-only
  * (the default) sends none; the other modes send authentication messages (own pairing only) and
- * a fixed set of read-only status requests. No bolus, basal/profile change, suspend/resume or
- * other therapy-control API is reachable through this class. Do not call start() against an
+ * a fixed set of read-only status requests. The one therapy exception is the owner-approved
+ * experimental bolus, which only {@link TandemX2BolusSession} can send, through
+ * {@link #sendBolusStep}, in own-pairing mode and non-release builds. No basal/profile change,
+ * suspend/resume or other therapy-control API is reachable. Do not call start() against an
  * active pump unless the owner is supervising the test.
  */
 public final class TandemX2PumpClient extends TandemPump {
@@ -71,6 +80,8 @@ public final class TandemX2PumpClient extends TandemPump {
     @Nullable private BluetoothPeripheral pendingPairingPeripheral;
     @Nullable private AbstractCentralChallengeResponse pendingCentralChallenge;
     @Nullable private KnownDeviceModel deviceModel;
+    @Nullable private BluetoothPeripheral connectedPeripheral;
+    @Nullable private TandemX2BolusSession bolusSession;
     private boolean started;
 
     @Nullable private TandemX2PumpSnapshot.IobValue controlIqIob;
@@ -129,6 +140,7 @@ public final class TandemX2PumpClient extends TandemPump {
         if (started || bluetoothHandler != null) TandemBluetoothHandler.resetInstance();
         started = false;
         bluetoothHandler = null;
+        connectedPeripheral = null;
         pendingPairingPeripheral = null;
         pendingCentralChallenge = null;
         notifyState(ConnectionState.STOPPED, "Stopped by caller");
@@ -258,6 +270,7 @@ public final class TandemX2PumpClient extends TandemPump {
         synchronized (this) {
             pendingPairingPeripheral = null;
             pendingCentralChallenge = null;
+            connectedPeripheral = peripheral;
         }
         // Intentionally do not call super.onPumpConnected() because it logs authentication material.
         if (mode == TandemX2ConnectionMode.LISTEN_ONLY) {
@@ -294,7 +307,62 @@ public final class TandemX2PumpClient extends TandemPump {
                     (CurrentBolusStatusResponse) message, receivedAt);
             changed = true;
         }
+        routeToBolusSession(message, receivedAt);
         if (changed) publishSnapshot(receivedAt);
+    }
+
+    private void routeToBolusSession(Message message, long receivedAt) {
+        final TandemX2BolusSession session = bolusSession;
+        if (session == null) return;
+        if (message instanceof BolusCalcDataSnapshotResponse) {
+            session.onSnapshot((BolusCalcDataSnapshotResponse) message, receivedAt);
+        } else if (message instanceof BolusPermissionResponse) {
+            session.onPermission((BolusPermissionResponse) message, receivedAt);
+        } else if (message instanceof InitiateBolusResponse) {
+            session.onInitiate((InitiateBolusResponse) message);
+        } else if (message instanceof CancelBolusResponse) {
+            session.onCancel((CancelBolusResponse) message);
+        } else if (message instanceof BolusPermissionReleaseResponse) {
+            session.onRelease((BolusPermissionReleaseResponse) message);
+        } else if (message instanceof CurrentBolusStatusResponse) {
+            session.onCurrentBolus((CurrentBolusStatusResponse) message);
+        }
+    }
+
+    /** The experimental bolus session that receives bolus responses; see AGENTS.md gates. */
+    public synchronized void setBolusSession(@Nullable TandemX2BolusSession session) {
+        bolusSession = session;
+    }
+
+    public static boolean isReleaseBuild() {
+        return "release".equals(BuildConfig.BUILD_TYPE);
+    }
+
+    /**
+     * The only path for bolus messages, used by {@link TandemX2BolusSession}. Separate from
+     * {@link #sendCommand}, whose allowlist never admits them. Re-checks the build, the mode and
+     * the message type, and enables PumpX2's insulin-delivery switch only for the initiate
+     * (PumpX2 has no way to switch it off again for the rest of the process).
+     */
+    public synchronized boolean sendBolusStep(Message message) {
+        final String blocked = isReleaseBuild() ? "release build"
+                : mode != TandemX2ConnectionMode.OWN_PAIRING ? mode + " mode"
+                : !TandemX2BolusPolicy.isBolusStep(message) ? "not a bolus step"
+                : connectedPeripheral == null ? "pump not connected" : null;
+        if (blocked != null) {
+            notifyState(ConnectionState.ERROR, "Blocked bolus step: " + blocked);
+            return false;
+        }
+        if (message instanceof InitiateBolusRequest) {
+            enableActionsAffectingInsulinDelivery();
+        }
+        super.sendCommand(connectedPeripheral, message);
+        return true;
+    }
+
+    /** Status read used while a bolus is delivering; goes through the normal allowlist. */
+    public synchronized void requestCurrentBolusStatus() {
+        if (connectedPeripheral != null) sendCommand(connectedPeripheral, new CurrentBolusStatusRequest());
     }
 
     @Override
@@ -306,6 +374,9 @@ public final class TandemX2PumpClient extends TandemPump {
 
     @Override
     public boolean onPumpDisconnected(BluetoothPeripheral peripheral, HciStatus status) {
+        synchronized (this) {
+            connectedPeripheral = null;
+        }
         notifyState(ConnectionState.DISCONNECTED, "Bluetooth disconnected (" + status.name() + ")");
         return true;
     }

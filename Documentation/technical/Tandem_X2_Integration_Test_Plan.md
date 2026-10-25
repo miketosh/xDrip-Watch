@@ -42,6 +42,8 @@ Add tests before a live provider exists:
 
 `app/src/test/java/com/eveningoutpost/dexdrip/tandem/TandemX2RequestPolicyTest.java` (9 tests, all passing 2026-10-25) covers the outgoing-message policy per connection mode: listen-only sends nothing, shared reads never send authentication, own pairing sends authentication and status reads; bolus, cancel-bolus, suspend and temp-rate requests are blocked in every mode; history requests are not allowlisted yet; pairing-code normalization; hex decoding of the saved secret; and the Timber guard.
 
+`app/src/test/java/com/eveningoutpost/dexdrip/tandem/TandemX2BolusTest.java` (17 tests, all passing 2026-10-25) covers every bolus gate: amount parsing, the cap (default 5.0 U, cannot be widened past 25 U), release build, switch off, non-own-pairing modes, pump minimum and pump maximum, bolus messages absent from the status allowlist; and the session: exact captured units-only initiate shape, refusals send nothing, pump maximum stops before permission, denied permission, expired/settings-changed confirmation releases the permission, a second confirm sends no second bolus, an unanswered initiate becomes UNKNOWN, is never re-sent and blocks new requests until acknowledged, cancel before/after initiate, late permission released, foreign bolus ids ignored, sender down.
+
 ## 4. Provider/adapter tests
 
 Use a fake local provider with fixed fixture input to verify:
@@ -118,6 +120,19 @@ Goal: learn whether xDrip sees any pump data while Tandem's app keeps the connec
 5. Press **Stop** after about 10 minutes, or at once if Tandem's app shows any connection problem.
 
 Pass: Tandem's app works throughout and after; any IOB shown matches the pump. Expected-uncertain: no snapshot at all (Tandem's app may not request these fields, or Android may not deliver another app's notifications). Recovery: listen-only sends no pump protocol message, so stopping (or force-stopping the test app) is the full rollback; if Tandem's app still misbehaves, force-stop it and reopen it. Record what the screen showed (it is not written to any log).
+
+#### Proposed first bolus session (needs the owner's explicit go-ahead)
+
+Preconditions: an own-pairing session has already shown status reads (IOB matches the pump); the owner chooses the time, has the pump in hand, and has decided the dose is one they would take anyway. This is a therapy action on an experimental, reverse-engineered path: the pump screen is the only source of truth.
+
+1. Own pairing as in the status session (Tandem's app displaced; re-pair it afterwards).
+2. Tick **Enable experimental bolus**; keep or lower the cap (default 5.00 U).
+3. Type the smallest useful amount (for example 0.05–0.10 U) and press **Request bolus**. Expect `CHECKING_PUMP` → `AWAITING_PERMISSION` → `READY_TO_CONFIRM`. Nothing is delivered in these steps.
+4. Press **Deliver … U now** within 30 s. Expect `SENDING` → `DELIVERING`, then `DONE` when the pump reports no current bolus. Watch the pump screen throughout.
+5. Check the pump's bolus history for the exact amount. Optionally repeat steps 3–4 and press **Cancel bolus** during delivery to test cancel.
+6. Untick the switch, Stop, re-pair Tandem's app.
+
+Stop at once and use the pump itself if anything differs from the pump's own screen. If the screen shows `UNKNOWN`, read the pump's history before doing anything else; the app never re-sends. Record build/commit, pump firmware, every state line, the pump-history amount and timing.
 
 ### Gate E — repeatable end-to-end evidence
 

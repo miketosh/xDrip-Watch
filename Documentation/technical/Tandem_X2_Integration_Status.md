@@ -62,7 +62,7 @@ The checked-in `.github/workflows/unit_test.yml` workflow is named “Unit Test�
 | Tandem status message to Garmin | Not implemented. |
 | Tandem-specific settings and UI | Dev test screen `TandemX2TestActivity` (from the Garmin bridge test screen): pump picker from bonded devices, mode choice, start/stop, pairing code entry, on-screen state and snapshot. No settings; nothing starts at app startup. |
 | Tandem fixtures and automated tests | Synthetic `TandemX2StatusMapperTest` passes (7/7, section 9). No pump-derived fixture. |
-| Phone-initiated bolus (owner-approved experiment, 2026-10-25) | Not implemented. Gates in `AGENTS.md`; PumpX2 provides the protocol messages. |
+| Phone-initiated bolus (owner-approved experiment, 2026-10-25) | Implemented behind the `AGENTS.md` gates on the dev test screen (section 11); `TandemX2BolusTest` 17/17. Never sent to a pump. |
 
 ## 6. Nightscout integration finding
 
@@ -75,7 +75,7 @@ The upstream [tconnectsync](https://github.com/jwoglom/tconnectsync) repository 
 1. ~~Run the new mapper tests and compile the app with the pinned PumpX2 dependency; fix any API/version issues.~~ Done 2026-10-25 (section 9).
 2. Keep the client opt-in and unwired until a controlled hardware test is approved. Under the owner's 2026-10-25 decision, every pump session is a short supervised test after which Tandem's app is re-paired.
 3. ~~Replace the blanket pairing refusal with a `pair()` override that logs neither the pairing code nor the J-PAKE derived secret (section 9), then add a dev-only phone test screen (pump MAC, pairing code, connect, show snapshot) for the first supervised session.~~ Done 2026-10-25 (section 10), plus connection modes that keep Tandem's app connected. Next physical step: the listen-only session in the [test plan](Tandem_X2_Integration_Test_Plan.md#proposed-first-session-listen-only-needs-the-owners-go-ahead), with the owner's go-ahead.
-4. Experimental phone bolus behind the `AGENTS.md` gates, with tests for each gate, after read-only status works on the pump.
+4. ~~Experimental phone bolus behind the `AGENTS.md` gates, with tests for each gate.~~ Coded 2026-10-25 (section 11). Physical use only after an own-pairing session has shown status reads work, and with the owner's explicit go-ahead for that bolus test ([test plan](Tandem_X2_Integration_Test_Plan.md#proposed-first-bolus-session-needs-the-owners-explicit-go-ahead)).
 5. Verify IOB and basal field semantics against a t:slim X2 and its displayed values; do not equate current-bolus status with historical bolus history.
 6. Add history requests only after current status reads and connection lifecycle are stable.
 7. Obtain explicit owner approval for a live-pump test after official-app coexistence and rollback/recovery risks are assessed.
@@ -148,3 +148,22 @@ Claude Code. Same host and toolchain as section 9.
 **Emulator evidence (Android 16 / API 36 AVD `xdrip36`, no Bluetooth pump, `fastDev` build):** the bridge screen opened (Garmin Connect missing, as before) and its "Tandem pump test" button opened the test screen. Start with an empty address showed "A specific pump Bluetooth MAC address is required"; Start in listen-only with `00:11:22:33:44:55` showed `SCANNING … (LISTEN_ONLY)`; Stop showed `STOPPED`; own pairing showed the second-tap prompt (not pressed). No crash, and no PumpX2 log lines in logcat for the app process.
 
 **Not tested:** any real pump; whether Android delivers another app's pump notifications to xDrip; how often Tandem's app requests the status fields; shared-reads and own-pairing behaviour; pairing on either code type; clearing the stored pairing state.
+
+## 11. Experimental phone bolus (2026-10-25)
+
+Claude Code, owner-approved experiment ("go ahead and code up the feature"; cap "make it a setting, and default to 5.0U"). Same host and toolchain as section 9. **Never sent to a pump.**
+
+**Source-derived protocol (PumpX2 `v1.9.3`, ControlX2 `HEAD`):** read `BolusCalcDataSnapshotRequest` (pump IOB, `maxBolusAmount` in milliunits) → `BolusPermissionRequest` → `BolusPermissionResponse` (granted + `bolusId`) → `InitiateBolusRequest(totalVolume, bolusId, typeBitmask, food, correction, carbs, BG, IOB)` → `InitiateBolusResponse`; cancel with `CancelBolusRequest(bolusId)`; give an unused permission back with `BolusPermissionReleaseRequest(bolusId)`. All bolus messages are `signed=true`, so they need xDrip's own pairing. PumpX2 also refuses `modifiesInsulinDelivery` messages until `enableActionsAffectingInsulinDelivery()` is called, and offers no way to switch that off again in the process. **Bolus type:** PumpX2 1.9.3 renamed the bits (ControlX2's `FOOD2` = 8 is now `CORRECTION` = 8); xDrip sends exactly what PumpX2's test captured from the pump for a "1u override bolus": type 8, all metadata 0.
+
+**Implementation:**
+- `TandemX2BolusPolicy`: gates in one function (release build, switch, own-pairing mode, amount format, 0.05 U minimum, cap, pump maximum); cap default 5.00 U, a setting outside 0.05–25 U falls back to the default; amount parsing to milliunits (≤ 2 decimals).
+- `TandemX2BolusSession`: the sequence above. Only `request()` and `confirm()` (user actions) advance; confirmation window 30 s after the pump grants permission, then the permission is released; gates are re-checked at confirm; a second confirm sends nothing; no message is ever re-sent; no reply to the initiate within 10 s → `UNKNOWN`, which blocks new requests until the user acknowledges having checked the pump; late permission grants are released; replies for another bolus id are ignored.
+- `TandemX2PumpClient.sendBolusStep()`: the only bolus send path, separate from the status allowlist (which still blocks every bolus message); re-checks release build, own-pairing mode, message type and connection; enables PumpX2's insulin switch only for the initiate. Bolus responses are routed to the session.
+- Test screen: "Enable experimental bolus" (xDrip pref `tandem_x2_experimental_bolus_enabled`, default off), cap (pref `tandem_x2_experimental_bolus_cap_units`, default 5.00), amount, Request, Deliver (enabled only when ready), Cancel, "I checked the pump's history". Polls current-bolus status every 3 s while delivering. Hidden in release builds. Stop during a bolus warns that the pump may still be delivering.
+- Not reachable from: the Garmin bridge, any intent/broadcast, app startup, alerts, automation.
+
+**Automated test evidence:** `TandemX2BolusTest` 17/17, `TandemX2RequestPolicyTest` 9/9, `TandemX2StatusMapperTest` 7/7, `KeksBouncyCastleTest` 7/7; `:app:assembleFastDev` succeeds.
+
+**Emulator evidence (API 36 AVD, no pump):** bolus section shown with cap 5.00 and the switch off; cap 30 refused ("Cap not saved"); in listen-only, Request → "experimental bolus is switched off", then with the switch on → "needs own-pairing mode"; in own pairing (scanning, no pump) → "could not send to the pump" and the client blocked the step. No crash.
+
+**Not tested:** any pump interaction: permission, initiate, delivery, cancel, release, the real pump maximum, timing of replies, behaviour if the connection drops mid-bolus.
