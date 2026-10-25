@@ -20,7 +20,7 @@ The `garmin-bridge` source includes a phone-side Garmin Connect IQ bridge. This 
 | `app/src/main/java/com/eveningoutpost/dexdrip/services/Ob1G5CollectionService.java` | Exposes `getKeksKeyForBridge()`, which reads a 16-byte saved G7 key after the collector knows the transmitter MAC. | This is a Dexcom sensor pairing detail, not a Tandem authentication or pump-data interface. |
 | `app/src/main/java/com/eveningoutpost/dexdrip/insulin/InsulinManager.java` and `Insulin.java` | Existing insulin profile and insulin-action model infrastructure. | Must not be treated as evidence that pump-reported IOB or delivered-basal history exists. |
 | `app/src/main/java/com/eveningoutpost/dexdrip/insulin/aaps/AAPSStatusHandler.java` | Processes AndroidAPS/Nightscout device-status messages; updates pump reservoir/battery status when those fields are present. | Does not establish a direct Tandem X2 connection or availability of all desired fields. |
-| `app/src/main/java/com/eveningoutpost/dexdrip/tandem/TandemX2PumpClient.java` | Opt-in PumpX2 BLE client with a target-MAC filter and a request allowlist for authentication plus selected current-status reads. | No UI caller; no physical pump test; no history retrieval or Garmin status delivery. |
+| `app/src/main/java/com/eveningoutpost/dexdrip/tandem/TandemX2PumpClient.java` | Opt-in PumpX2 BLE client with a target-MAC filter and a request allowlist for authentication plus selected current-status reads. | Fresh pairing is intentionally blocked: upstream `TandemPump.pair()` logs and persists the pairing code. No UI caller, physical pump test, history retrieval, or Garmin status delivery. |
 | `app/src/main/java/com/eveningoutpost/dexdrip/tandem/TandemX2PumpSnapshot.java` and `TandemX2StatusMapper.java` | Partial snapshot and mapping of two IOB response types, basal raw fields, and current-bolus status. | Synthetic code only. Basal rate scale and response values are not validated against a pump display. |
 | `app/src/main/java/com/eveningoutpost/dexdrip/wearintegration/ExternalStatusService.java` | Handles an external status-line string and extracts basal-rate/TBR-like information from that string. | Not a Tandem protocol parser; parsed text must not be represented as pump data unless its origin is independently established. |
 
@@ -71,3 +71,10 @@ The checked-in `.github/workflows/unit_test.yml` workflow is named â€œUnit Testâ
 5. Obtain explicit owner approval for a live-pump test after official-app coexistence and rollback/recovery risks are assessed.
 
 See [the design document](Tandem_X2_Integration.md) and [the test plan](Tandem_X2_Integration_Test_Plan.md).
+
+
+## 7. Newly identified pairing-code safety blocker
+
+Inspection of PumpX2 v1.9.3's `TandemPump.pair()` shows it emits a Timber INFO message containing the pairing code and stores the code through `PumpState` preferences. The wrapper intentionally refuses to pass a user-entered code into that method until log exposure and credential persistence have been reviewed and addressed. Passing a null logging tree to PumpX2 does not guarantee that another Timber tree is absent.
+
+This is a deliberate functional limitation, not a passing connection test. The current prototype may expose the pairing-required state, but a fresh pairing flow must not be enabled yet. Existing xDrip/Tandem connection coexistence and recovery also remain unverified.

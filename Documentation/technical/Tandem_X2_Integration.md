@@ -108,7 +108,10 @@ The initial implementation must not calculate pump IOB from bolus history as an 
 
 ## 6. Safety, privacy, and connection ownership
 
-- The feature is read-only at the therapy level. No bolus, basal, profile, suspension, resume, or Control-IQ-setting commands.
+**Important PumpX2 pairing limitation:** the inspected PumpX2 v1.9.3 source logs the user-supplied pairing code from `TandemPump.pair()` through Timber and persists it using `PumpState` preferences. Passing a null logging tree to the handler does not prove there are no other Timber sinks in the host app. For that reason, `TandemX2PumpClient.submitPairingCode()` deliberately refuses fresh pairing in this prototype. Scanning and reaching a pairing-required callback are not proof that authentication can complete. Before enabling fresh pairing, address secret logging and decide how pairing/authentication state should be stored and cleared.
+
+
+- The feature is read-only at the therapy level. No bolus, basal, profile, suspension, resume, or Control-IQ-setting commands. The wrapper allowlists authentication-package messages and selected status requests only.
 - Do not change the pump's configuration, therapy, or official phone-app configuration.
 - Determine whether direct BLE can coexist with the official Tandem app before enabling live communication. A second client might compete for the connection; coexistence is an open question, not an assumed fact.
 - Keep protocol/authentication secrets out of logs, source control, test output, and Garmin messages unless a separately reviewed protocol design requires a specific protected transfer. Never transfer a Tandem secret merely by analogy with the existing G7 saved-key handoff.
@@ -140,4 +143,4 @@ These questions do not block writing the design or implementing a fake provider,
 
 ## 9. Current status
 
-See [Tandem integration status](Tandem_X2_Integration_Status.md) and [test plan](Tandem_X2_Integration_Test_Plan.md). Current state is an opt-in PumpX2 adapter prototype plus synthetic response-mapper tests. No test has run against a pump or Garmin watch, and the adapter is not wired to a UI. Existing Garmin P1/P2 work remains a separate G7 bridge.
+See [Tandem integration status](Tandem_X2_Integration_Status.md) and [test plan](Tandem_X2_Integration_Test_Plan.md). Current state is an opt-in PumpX2 adapter prototype plus synthetic response-mapper tests. No test has run against a pump or Garmin watch, and the adapter is not wired to a UI. Fresh pairing is deliberately blocked pending PumpX2 pairing-code log/persistence hardening. Existing Garmin P1/P2 work remains a separate G7 bridge.
