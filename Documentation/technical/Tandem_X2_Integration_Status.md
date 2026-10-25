@@ -9,7 +9,7 @@
 
 The owner uses a Tandem t:slim X2, an Android phone running xDrip+, and a Garmin Connect IQ watch integration split across this repository and [garmin7-scout](https://github.com/miketosh/garmin7-scout).
 
-The `garmin-bridge` source includes a phone-side Garmin Connect IQ bridge. This iteration adds the pinned PumpX2 community library, `TandemX2PumpClient`, a transport-independent `TandemX2PumpSnapshot`, a response mapper, and synthetic mapper test sources. The client is opt-in and has no UI call site; no real pump communication has been verified.
+The `garmin-bridge` source includes a phone-side Garmin Connect IQ bridge. This iteration adds the pinned PumpX2 community library, `TandemX2PumpClient`, a transport-independent `TandemX2PumpSnapshot`, a response mapper, and synthetic mapper test sources. The client is opt-in and has no UI call site; no real pump communication has been verified. Existing xDrip Nightscout components are present in the base app, but the Tandem prototype is not connected to them.
 
 ## 2. Existing phone-side code
 
@@ -62,7 +62,13 @@ The checked-in `.github/workflows/unit_test.yml` workflow is named â€œUnit Testâ
 | Tandem-specific settings and UI | Not implemented; the client is not invoked by a screen or application startup. |
 | Tandem fixtures and automated tests | Synthetic `TandemX2StatusMapperTest` source added; not run. No pump-derived fixture. |
 
-## 6. Next steps
+## 6. Nightscout integration finding
+
+The xDrip base app already contains `app/src/main/java/com/eveningoutpost/dexdrip/utilitymodels/NightscoutUploader.java` and `NightscoutTreatments.java`, alongside unit/integration tests for Nightscout upload behavior. These should be evaluated before introducing a second uploader. No Tandem response is currently mapped into xDrip's upload queue.
+
+The upstream [tconnectsync](https://github.com/jwoglom/tconnectsync) repository already uploads Tandem Source cloud events to Nightscout; PumpX2 does not advertise a Nightscout uploader. The cloud path is not the selected local-first source. See [integration options](Tandem_Nightscout_Integration_Options.md).
+
+## 7. Next steps
 
 1. Run the new mapper tests and compile the app with the pinned PumpX2 dependency; fix any API/version issues.
 2. Keep the client opt-in and unwired until a controlled hardware test is approved.

@@ -47,6 +47,12 @@ No public, supported Tandem developer API or usable local interface has been est
 
 **Implementation decision:** use the pinned PumpX2 `v1.9.3` library behind `TandemX2PumpClient`, with a request allowlist and transport-independent `TandemX2PumpSnapshot`. A specific target Bluetooth address is required; the client starts only when explicitly called and is not currently wired to app startup, UI, or GarminBridge. Do not add a cloud dependency.
 
+## 3A. Nightscout is a separate sink, not the local pump source
+
+The xDrip app already includes general Nightscout integration components such as `NightscoutUploader` and `NightscoutTreatments`. This makes the existing app uploader the first integration point to inspect if verified Tandem pump events should optionally be uploaded. The current Tandem prototype does **not** call it and does not implement a second uploader.
+
+The upstream [tconnectsync](https://github.com/jwoglom/tconnectsync) project already maps cloud-retrieved Tandem Source events into Nightscout basal/bolus/profile entries, but its event source differs from PumpX2 Bluetooth responses. See [Tandem vs. Nightscout integration options](Tandem_Nightscout_Integration_Options.md) before reusing any code or defining upload behavior.
+
 ## 4. Proposed architecture
 
 Keep these responsibilities separate:

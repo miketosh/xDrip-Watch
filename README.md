@@ -1,8 +1,10 @@
-# Nightscout xDrip
-> Enhanced personal research version of xDrip
+# xDrip-Watch — personal xDrip fork
+> Experimental personal fork of [NightscoutFoundation/xDrip](https://github.com/NightscoutFoundation/xDrip), with separate phone-to-Garmin development work.
+
+This repository is not an official xDrip/Nightscout release. The upstream xDrip resources and download page linked below refer to upstream releases, **not** builds made from this fork.
 
  <img align="right" src="Documentation/images/download-xdrip-plus-qr-code.png">
- Info page and APK download: https://jamorham.github.io/#xdrip-plus
+ Upstream xDrip resources and downloads: https://jamorham.github.io/#xdrip-plus
 
 <img align="right" src="https://travis-ci.org/jamorham/xDrip-plus.svg?branch=master"><a align="right" title="Crowdin" target="_blank" href="https://crowdin.com/project/xdrip"><img align="right" src="https://badges.crowdin.net/xdrip/localized.svg"></a>
 
@@ -44,6 +46,9 @@ This fork's `garmin-bridge` branch contains experimental phone-to-Garmin Connect
 - [Tandem integration test plan](Documentation/technical/Tandem_X2_Integration_Test_Plan.md)
 
 The design is local-first and intended to be read-only at the therapy level. PumpX2 is experimental and not an official Tandem SDK; the wrapper allowlists authentication and selected status requests only. Fresh pairing is deliberately blocked because PumpX2 v1.9.3 logs and persists pairing codes. Do not start a live pump session before pairing-secret handling and official-app coexistence/recovery are reviewed. Never treat modeled insulin estimates as pump-reported values.
+
+- [Tandem vs. Nightscout integration options](Documentation/technical/Tandem_Nightscout_Integration_Options.md)
+- xDrip already contains general Nightscout upload/download components. The current Tandem prototype does not yet send pump data through those existing paths, and it does not implement a Nightscout uploader of its own.
 
 ## Ethos
 * Developed using Rapid Prototyping methodology
