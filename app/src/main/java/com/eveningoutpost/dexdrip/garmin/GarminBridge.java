@@ -18,7 +18,8 @@ import java.util.Map;
  * (github.com/miketosh/garmin7-scout), via Garmin Connect on the phone.
  *
  * P1 sends a test ping; P2 sends the saved G7 key so the watch can
- * authenticate directly. See docs/XDRIP_WATCH_BRIDGE.md there.
+ * authenticate directly. See docs/XDRIP_WATCH_BRIDGE.md there. Pump status
+ * follows the v1 contract in LOCAL_DATA_EXCHANGE_ARCHITECTURE.md, section 6.
  */
 public class GarminBridge {
 
@@ -59,6 +60,16 @@ public class GarminBridge {
         message.put("tx", Ob1G5CollectionService.getTransmitterID());
         message.put("key", JoH.bytesToHex(key));
         report(listener, "Sending saved G7 key (16 bytes) for transmitter " + Ob1G5CollectionService.getTransmitterID());
+        send(context, message, listener);
+    }
+
+    /**
+     * Sends a v1 pump_status message (GarminWatchMessages). Only its type and field count are
+     * reported: the values are health data.
+     */
+    public static void sendPumpStatus(Context context, Map<String, Object> message, StatusListener listener) {
+        if (!GarminWatchMessages.PUMP_STATUS.equals(message.get("t"))) return;
+        report(listener, "Sending pump_status (" + message.size() + " fields)");
         send(context, message, listener);
     }
 

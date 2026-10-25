@@ -16,6 +16,8 @@ import android.widget.RadioGroup;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
+import com.eveningoutpost.dexdrip.garmin.GarminBridge;
+import com.eveningoutpost.dexdrip.garmin.GarminWatchMessages;
 import com.eveningoutpost.dexdrip.utilitymodels.Pref;
 import com.jwoglom.pumpx2.pump.messages.response.qualifyingEvent.QualifyingEvent;
 
@@ -44,6 +46,9 @@ public class TandemX2TestActivity extends Activity implements TandemX2PumpClient
     private final Handler ticker = new Handler(Looper.getMainLooper());
     private Button deliver;
     private TandemX2BolusSession bolusSession;
+    private TandemX2PumpSnapshot lastSnapshot;
+    private String link = GarminWatchMessages.LINK_OFF;
+    private int watchSeq;
     private EditText mac;
     private RadioGroup modes;
     private EditText pairingCode;
@@ -122,6 +127,14 @@ public class TandemX2TestActivity extends Activity implements TandemX2PumpClient
             append(sent ? "Pairing code submitted" : "Pairing code not accepted (no pairing pending, or malformed)");
         });
         layout.addView(pair);
+
+        final Button toWatch = new Button(this);
+        toWatch.setText("Send pump status to watch");
+        toWatch.setOnClickListener(v -> GarminBridge.sendPumpStatus(this,
+                GarminWatchMessages.pumpStatus(lastSnapshot, link, ++watchSeq, System.currentTimeMillis()),
+                this::append));
+        layout.addView(toWatch);
+
         addBolusSection(layout);
 
         output = new TextView(this);
@@ -326,11 +339,19 @@ public class TandemX2TestActivity extends Activity implements TandemX2PumpClient
 
     @Override
     public void onConnectionStateChanged(TandemX2PumpClient.ConnectionState state, String detail) {
+        if (state == TandemX2PumpClient.ConnectionState.CONNECTED) {
+            link = GarminWatchMessages.LINK_UP;
+        } else if (state == TandemX2PumpClient.ConnectionState.DISCONNECTED) {
+            link = GarminWatchMessages.LINK_DOWN;
+        } else if (state == TandemX2PumpClient.ConnectionState.STOPPED) {
+            link = GarminWatchMessages.LINK_OFF;
+        }
         append(state + ": " + detail);
     }
 
     @Override
     public void onSnapshot(TandemX2PumpSnapshot s) {
+        lastSnapshot = s;
         final StringBuilder b = new StringBuilder("Snapshot");
         appendIob(b, "Control-IQ IOB", s.getControlIqIob());
         appendIob(b, "IOB", s.getNonControlIqIob());

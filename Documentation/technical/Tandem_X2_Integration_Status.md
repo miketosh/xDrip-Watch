@@ -59,7 +59,7 @@ The checked-in `.github/workflows/unit_test.yml` workflow is named “Unit Test�
 | Actual delivered basal history | Not implemented. |
 | Canonical Tandem snapshot model | Partial `TandemX2PumpSnapshot` exists for IOB, basal raw fields, and current bolus. Historical event model is not implemented. |
 | Tandem data persistence/refresh/stale handling | Not implemented. |
-| Tandem status message to Garmin | Not implemented. |
+| Tandem status message to Garmin | v1 `pump_status` fields proposed ([contract §6.2](LOCAL_DATA_EXCHANGE_ARCHITECTURE.md)); phone builder `GarminWatchMessages` (tested) and a test-screen send button. Watch receiver not implemented; nothing sends automatically. |
 | Tandem-specific settings and UI | Dev test screen `TandemX2TestActivity` (from the Garmin bridge test screen): pump picker from bonded devices, mode choice, start/stop, pairing code entry, on-screen state and snapshot. No settings; nothing starts at app startup. |
 | Tandem fixtures and automated tests | Synthetic `TandemX2StatusMapperTest` passes (7/7, section 9). No pump-derived fixture. |
 | Phone-initiated bolus (owner-approved experiment, 2026-10-25) | Implemented behind the `AGENTS.md` gates on the dev test screen (section 11); `TandemX2BolusTest` 17/17. Never sent to a pump. |
@@ -107,7 +107,7 @@ See [the local data-exchange contract](LOCAL_DATA_EXCHANGE_ARCHITECTURE.md).
 
 ## 9. Build and test evidence (2026-10-25)
 
-Claude Code, Windows 11 host, JDK 17.0.20.1, Android SDK 36, Gradle wrapper of this branch. No phone, pump or watch involved.
+Claude Code session `garmin7-scout-0a` (xDrip-Watch pump work), Windows 11 host, JDK 17.0.20.1, Android SDK 36, Gradle wrapper of this branch. No phone, pump or watch involved.
 
 **Before this change** (`5e84941`): `:app:compileFastDevJavaWithJavac` failed with 15 `cannot find symbol` errors (`BluetoothPeripheral`, `HciStatus`), then `cannot access Timber`. *Cause, observed in the published POMs:* `pumpx2-android:v1.9.3` declares `blessed-android:2.4.0` and `timber:5.0.1` with `runtime` scope, but `TandemX2PumpClient` uses their types in PumpX2's callback signatures.
 
@@ -133,7 +133,7 @@ Claude Code, Windows 11 host, JDK 17.0.20.1, Android SDK 36, Gradle wrapper of t
 
 ## 10. Connection modes, safe pairing and test screen (2026-10-25)
 
-Claude Code. Same host and toolchain as section 9.
+Claude Code session `garmin7-scout-0a` (xDrip-Watch pump work). Same host and toolchain as section 9.
 
 **Source-derived finding (PumpX2 `v1.9.3`, not in its README):** `TandemPump` can share the pump connection that the official Tandem app already has on the same phone. `enableTconnectAppConnectionSharing()` and `relyOnConnectionSharingForAuthentication()` make PumpX2 send no authentication message (sending one would make the pump drop the link the Tandem app is using, per the handler's comments); `enableSendSharedConnectionResponseMessages()` delivers the pump's replies to the Tandem app's requests to `onReceiveMessage`; `onlySnoopBluetoothAndBlockAllPumpX2Functionality()` blocks every PumpX2 write. So xDrip may be able to read pump data **while Tandem's app stays paired**, which would make continuous pump data compatible with the owner's 2026-10-25 decision (*to verify on the pump*). Bolus messages (`InitiateBolusRequest`, `CancelBolusRequest`, `BolusPermissionRequest`) are `signed=true` (HMAC with the pairing-derived secret), so an xDrip bolus needs own pairing.
 
@@ -151,7 +151,7 @@ Claude Code. Same host and toolchain as section 9.
 
 ## 11. Experimental phone bolus (2026-10-25)
 
-Claude Code, owner-approved experiment ("go ahead and code up the feature"; cap "make it a setting, and default to 5.0U"). Same host and toolchain as section 9. **Never sent to a pump.**
+Claude Code session `garmin7-scout-0a` (xDrip-Watch pump work), owner-approved experiment ("go ahead and code up the feature"; cap "make it a setting, and default to 5.0U"). Same host and toolchain as section 9. **Never sent to a pump.**
 
 **Source-derived protocol (PumpX2 `v1.9.3`, ControlX2 `HEAD`):** read `BolusCalcDataSnapshotRequest` (pump IOB, `maxBolusAmount` in milliunits) → `BolusPermissionRequest` → `BolusPermissionResponse` (granted + `bolusId`) → `InitiateBolusRequest(totalVolume, bolusId, typeBitmask, food, correction, carbs, BG, IOB)` → `InitiateBolusResponse`; cancel with `CancelBolusRequest(bolusId)`; give an unused permission back with `BolusPermissionReleaseRequest(bolusId)`. All bolus messages are `signed=true`, so they need xDrip's own pairing. PumpX2 also refuses `modifiesInsulinDelivery` messages until `enableActionsAffectingInsulinDelivery()` is called, and offers no way to switch that off again in the process. **Bolus type:** PumpX2 1.9.3 renamed the bits (ControlX2's `FOOD2` = 8 is now `CORRECTION` = 8); xDrip sends exactly what PumpX2's test captured from the pump for a "1u override bolus": type 8, all metadata 0.
 

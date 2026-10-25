@@ -76,7 +76,7 @@ Repository inspection found these existing xDrip mechanisms:
 - **Legacy external-status broadcast:** `ExternalStatusBroadcastReceiver` / `ExternalStatusService` accepts a short status-line intent and extracts basal/TBR or IOB-like text. It is too ambiguous for the canonical rich pump data contract; do not make it the new API.
 - **Nightscout HTTP upload/download:** `NightscoutUploader` and `NightscoutTreatments` communicate with a configured Nightscout server. They are not the phone↔watch transport and are not required for this goal.
 
-## 6. Proposed phone/watch message types (not frozen or implemented)
+## 6. Phone/watch message types (v1 fields proposed; not frozen)
 
 Keep the current message types separate; never overload saved G7 authentication-key transfer as a pump-data container.
 
@@ -84,11 +84,62 @@ Keep the current message types separate; never overload saved G7 authentication-
 |---|---|---|---|
 | Phone → watch | `ping` | Existing test | Confirms a basic phone-to-watch message. |
 | Phone → watch | `key` | Existing prototype; secret | Transfers the saved Dexcom G7 key for direct watch authentication. Never log or place it in pump-data messages. |
-| Phone → watch | `pump_status` (proposed name) | Planned | Compact pump snapshot, with pump-reported IOB, verified basal fields, labelled current/recent bolus status, source/receive timestamps and freshness. |
-| Watch → phone | `glucose_reading` (proposed name) | Planned | A new accepted reading obtained from the watch's direct G7 collector; include value/unit, source/read time and deduplication identity, not raw BLE packets or credentials. |
+| Phone → watch | `pump_status` v1 | Proposed (6.2); phone builder + test button exist, watch receiver not yet | Compact pump snapshot, with pump-reported IOB, labelled current-bolus status, source/receive timestamps and freshness. |
+| Watch → phone | `glucose` v1 | Proposed (6.3); phone parser exists, watch sender and phone receiver not yet | A new accepted reading obtained from the watch's direct G7 collector. Renamed from `glucose_reading`: the watch logs a message type only if it is ≤ 12 characters. |
 | Phone → watch | bounded `pump_history` batch (later) | Planned | Validated, timestamped events with deterministic IDs, explicit event semantics and strict count/size limits. |
 
-These names are proposals, not a final wire format. Before implementing either direction, agree the version, field names/types, units, timestamps, provenance, freshness states, max payload, malformed-message behavior and deduplication rules in both repositories.
+### 6.1 Rules for every v1 message (proposed 2026-10-25 by Claude Code session `garmin7-scout-0a` (xDrip-Watch pump work); awaiting review by Claude Code - garmin7-scout-watch-integrator)
+
+- A flat dictionary with string keys. `t` (type) and `v` (integer version, `1`) are always present. A receiver ignores a message whose `t`/`v` it does not know and logs only type and version.
+- **Integers only** for numbers: insulin in milliunits, glucose in mg/dL, times in Unix epoch **seconds** (fits Connect IQ's 32-bit `Number` until 2038). Strings ≤ 12 characters. No floats, no nested containers in v1.
+- **Unknown means absent.** A value that is not known is left out; `0` always means a reported zero; `null` is never sent. A field of the wrong type is treated as absent; the rest of the message stays usable unless an identity or time field it depends on is broken.
+- **Every value carries its own time** (`*_t` = when the phone or watch received it from the pump or sensor; `*_pt`/`st` = the device's own time where it reports one). Receivers judge freshness from these, not from when the message arrived.
+- Receivers ignore unknown keys, so later versions can add fields. Changing a field's meaning or units requires a new `v`.
+- Keys starting `x_` are reserved for xDrip-modelled (not device-reported) values; v1 defines none.
+- No secrets, no raw BLE/protocol bytes. Logs on both sides record type, version, field count and accept/reject reason, never values.
+- No commands in either direction: the watch never asks the phone or pump to do anything (watch bolus is not approved).
+
+### 6.2 `pump_status` v1 (phone → watch)
+
+Sent when a new pump snapshot arrives (and on the test screen's button). Small: under 300 bytes.
+
+| Key | Type | Meaning |
+|---|---|---|
+| `t`, `v` | string, int | `"pump_status"`, `1` |
+| `sent` | int | Phone time of sending (epoch s) |
+| `seq` | int | Phone counter; with `sent`, lets the watch drop out-of-order copies (keep the newest `sent`) |
+| `link` | string | Phone's pump link: `"up"` (connected), `"down"` (was connected, now lost), `"off"` (not running). Pump data is usually absent and `off` (owner decision: test sessions only), which the watch shows as normal, not as an error |
+| `iob`, `iob_t` | int, int | Pump-reported insulin on board in milliunits (Control-IQ value when the pump selects one, else the standard IOB), and when the phone received it. The pump reports no source time for IOB |
+| `cb_st` | string | Current bolus: `"none"` (pump says no bolus running), `"requesting"`, `"delivering"`, `"done"`. Absent if unknown |
+| `cb_u` | int | Requested amount of that bolus, milliunits (not the delivered amount) |
+| `cb_pt` | int | Pump's time for that bolus (epoch s), if reported |
+| `cb_t` | int | When the phone received the current-bolus status |
+| `br`, `br_t` | int, int | *Reserved:* current delivered basal rate, milliunits/hour. Not sent until the scale of PumpX2's `CurrentBasalStatusResponse` is verified against the pump screen |
+| `lb_u`, `lb_pt`, `lb_t` | int | *Reserved:* last completed bolus amount (milliunits), pump time, receive time. Not sent until `LastBolusStatus` is read and verified |
+
+**Watch freshness rule (proposed; tune after the first pump sessions):** age = watch now − `*_t`. Up to 10 min: show normally with its age. 10–60 min: show marked stale with its age. Over 60 min, more than 5 min in the future, or absent: show `--`. `link` only labels the source; it never makes old values look current.
+
+### 6.3 `glucose` v1 (watch → phone)
+
+Sent once per new G7 reading (new sequence), via Connect IQ `Communications.transmit`. Small: under 200 bytes. Fields map to what the watch already decodes from the G7 `0x4E` message.
+
+| Key | Type | Meaning |
+|---|---|---|
+| `t`, `v` | string, int | `"glucose"`, `1` |
+| `tx` | string | Sensor's BLE name as the watch stores it (`g7DeviceName`, ≤ 8 chars) |
+| `sq` | int | G7 reading sequence number; (`tx`, `sq`) is the deduplication key |
+| `mg` | int | Glucose, mg/dL (raw & 0x0FFF). Absent if the sensor reported none (0xFFFF) |
+| `st` | int | Reading time (epoch s) = watch time at receipt − the sensor's reported age |
+| `rt` | int | Watch time the reading was received (epoch s) |
+| `tr` | int | Sensor trend, tenths of mg/dL per minute (signed). Absent if unknown |
+| `pr` | int | Sensor predicted glucose, mg/dL. Optional |
+| `alg` | int | G7 algorithm state (6 = OK) |
+| `do` | bool | Display-only flag from the sensor (calibration byte bit 0x10) |
+| `rel` | bool | True only if the watch itself would show it as current: `alg == 6`, not display-only, value present, age ≤ 900 s. Same rule as the watch's dashboard |
+
+**Phone rules:** store or display a reading only if `rel` is true, `mg` is within 40–400, `st` is at most 5 min in the future and at most 24 h old, and (`tx`, `sq`) is new. Label it as coming from the watch's direct G7 connection. Never send it back to the watch (no echo loops) and never treat it as a pump value.
+
+**Implemented on the phone (2026-10-25):** `garmin/GarminWatchMessages` builds `pump_status` and parses/deduplicates `glucose` exactly as above; `GarminWatchMessagesTest` (15 tests) covers both. `GarminBridge.sendPumpStatus` sends it; the Tandem test screen has a "Send pump status to watch" button. **Not implemented:** the watch-side receiver/sender (garmin7-scout's area) and the phone-side registration for watch messages.
 
 ## 7. Data semantics and safety
 
