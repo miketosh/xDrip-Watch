@@ -1,11 +1,14 @@
 package com.eveningoutpost.dexdrip.garmin;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.os.Bundle;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
+
+import com.eveningoutpost.dexdrip.tandem.TandemX2TestActivity;
 
 /**
  * xDrip-Watch bridge test screen, opened from its "Garmin bridge test"
@@ -41,6 +44,11 @@ public class GarminBridgeTestActivity extends Activity {
             }
         });
         layout.addView(key);
+
+        final Button tandem = new Button(this);
+        tandem.setText("Tandem pump test");
+        tandem.setOnClickListener(v -> startActivity(new Intent(this, TandemX2TestActivity.class)));
+        layout.addView(tandem);
 
         output = new TextView(this);
         output.setTextIsSelectable(true);

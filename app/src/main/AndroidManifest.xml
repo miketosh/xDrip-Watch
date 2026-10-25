@@ -145,6 +145,11 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <!-- xDrip-Watch: supervised Tandem t:slim X2 test, opened from the bridge test screen. -->
+        <activity
+            android:name=".tandem.TandemX2TestActivity"
+            android:label="Tandem pump test"
+            android:exported="false" />
         <activity
             android:name=".cgm.glupro.GluProActivity"
             android:label="@string/glupro_activity_title"

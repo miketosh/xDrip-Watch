@@ -6,12 +6,16 @@ import android.os.Looper;
 
 import androidx.annotation.Nullable;
 
+import com.jwoglom.pumpx2.pump.PumpState;
 import com.jwoglom.pumpx2.pump.TandemError;
 import com.jwoglom.pumpx2.pump.bluetooth.PumpReadyState;
 import com.jwoglom.pumpx2.pump.bluetooth.TandemBluetoothHandler;
 import com.jwoglom.pumpx2.pump.bluetooth.TandemPump;
 import com.jwoglom.pumpx2.pump.messages.Message;
 import com.jwoglom.pumpx2.pump.messages.builders.JpakeAuthBuilder;
+import com.jwoglom.pumpx2.pump.messages.builders.PumpChallengeRequestBuilder;
+import com.jwoglom.pumpx2.pump.messages.models.KnownDeviceModel;
+import com.jwoglom.pumpx2.pump.messages.models.PairingCodeType;
 import com.jwoglom.pumpx2.pump.messages.request.currentStatus.ApiVersionRequest;
 import com.jwoglom.pumpx2.pump.messages.request.currentStatus.ControlIQIOBRequest;
 import com.jwoglom.pumpx2.pump.messages.request.currentStatus.CurrentBasalStatusRequest;
@@ -39,10 +43,11 @@ import java.util.Set;
  * Opt-in local BLE client for selected t:slim X2 status reads, backed by the community PumpX2
  * library. Prototype only: no application UI currently starts this client automatically.
  *
- * Safety boundary: permits authentication-package messages and a fixed set of read-only current
- * status requests. It intentionally does not expose bolus, basal/profile changes, suspend/resume,
- * or other therapy-control APIs. Do not call start() against an active pump before the connection
- * coexistence/recovery test has been reviewed and explicitly approved.
+ * Safety boundary: {@link TandemX2RequestPolicy} decides every outgoing message. Listen-only
+ * (the default) sends none; the other modes send authentication messages (own pairing only) and
+ * a fixed set of read-only status requests. No bolus, basal/profile change, suspend/resume or
+ * other therapy-control API is reachable through this class. Do not call start() against an
+ * active pump unless the owner is supervising the test.
  */
 public final class TandemX2PumpClient extends TandemPump {
     public enum ConnectionState {
@@ -56,17 +61,16 @@ public final class TandemX2PumpClient extends TandemPump {
         void onQualifyingEvents(Set<QualifyingEvent> events);
     }
 
-    private static final String AUTH_REQUEST_PACKAGE =
-            "com.jwoglom.pumpx2.pump.messages.request.authentication";
-
     private final Context appContext;
     private final String targetMac;
+    private final TandemX2ConnectionMode mode;
     @Nullable private final Listener listener;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     @Nullable private TandemBluetoothHandler bluetoothHandler;
     @Nullable private BluetoothPeripheral pendingPairingPeripheral;
     @Nullable private AbstractCentralChallengeResponse pendingCentralChallenge;
+    @Nullable private KnownDeviceModel deviceModel;
     private boolean started;
 
     @Nullable private TandemX2PumpSnapshot.IobValue controlIqIob;
@@ -75,21 +79,28 @@ public final class TandemX2PumpClient extends TandemPump {
     @Nullable private TandemX2PumpSnapshot.CurrentBolusValue currentBolus;
 
     /** A specific, already-identified pump address is required to avoid attaching to a neighbor. */
-    public TandemX2PumpClient(Context context, String targetMac, @Nullable Listener listener) {
+    public TandemX2PumpClient(Context context, String targetMac,
+                              @Nullable TandemX2ConnectionMode mode, @Nullable Listener listener) {
         super(context, Optional.of(validateMac(targetMac)));
         this.appContext = context.getApplicationContext();
         this.targetMac = validateMac(targetMac);
+        this.mode = mode == null ? TandemX2ConnectionMode.LISTEN_ONLY : mode;
         this.listener = listener;
     }
 
     /** Explicitly starts BLE discovery. Not invoked from xDrip startup or GarminBridge. */
     public synchronized void start() {
         if (started) return;
+        if (!TandemX2RequestPolicy.isPumpX2LoggingSilent()) {
+            notifyState(ConnectionState.ERROR,
+                    "A Timber log tree is planted; PumpX2 would log pump data and secrets");
+            return;
+        }
         started = true;
-        notifyState(ConnectionState.SCANNING, "Scanning for the configured Tandem pump");
+        applyModeToPumpState();
+        notifyState(ConnectionState.SCANNING, "Scanning for the configured Tandem pump (" + mode + ")");
         try {
-            // Null skips PumpX2's verbose debug tree. Do not call super.onPumpConnected(): that
-            // implementation logs cached authentication material before sending default queries.
+            // A null tree keeps PumpX2 from planting its debug tree (checked above).
             bluetoothHandler = TandemBluetoothHandler.getInstance(appContext, this, null);
             bluetoothHandler.startScan();
         } catch (RuntimeException e) {
@@ -97,6 +108,20 @@ public final class TandemX2PumpClient extends TandemPump {
             notifyState(ConnectionState.ERROR,
                     "Unable to start Bluetooth (" + e.getClass().getSimpleName() + ")");
         }
+    }
+
+    /**
+     * PumpState holds these as process-wide statics, so set every one for this mode rather than
+     * relying on defaults left by an earlier session.
+     */
+    private void applyModeToPumpState() {
+        final boolean shared = mode != TandemX2ConnectionMode.OWN_PAIRING;
+        PumpState.tconnectAppConnectionSharing = shared;
+        PumpState.relyOnConnectionSharingForAuthentication = shared;
+        PumpState.sendSharedConnectionResponseMessages = shared;
+        PumpState.onlySnoopBluetooth = mode == TandemX2ConnectionMode.LISTEN_ONLY;
+        PumpState.tconnectAppAlreadyAuthenticated = false;
+        PumpState.tconnectAppConnectionSharingIgnoreInitialFailingWrite = false;
     }
 
     /** Stops this PumpX2 handler. Does not unpair the phone or alter pump therapy. */
@@ -109,28 +134,86 @@ public final class TandemX2PumpClient extends TandemPump {
         notifyState(ConnectionState.STOPPED, "Stopped by caller");
     }
 
+    public TandemX2ConnectionMode getMode() {
+        return mode;
+    }
+
     public synchronized boolean isPairingCodeRequired() {
         return pendingPairingPeripheral != null;
     }
 
     /**
-     * Fresh pairing is intentionally disabled in this prototype. PumpX2 v1.9.3's inherited
-     * TandemPump.pair() logs the supplied pairing code and persists it through PumpState. Do not
-     * remove this guard until the upstream secret-logging and persistence behavior has been
-     * reviewed and a safe pairing implementation is in place.
+     * Pairs with the code shown on the pump (Bluetooth settings, Pair Device). Own-pairing mode
+     * only; returns false if no pairing is pending or the code is malformed.
      */
-    @Deprecated
     public synchronized boolean submitPairingCode(String pairingCode) {
-        if (pendingPairingPeripheral != null) {
-            notifyState(ConnectionState.ERROR,
-                    "Fresh pairing is disabled pending pairing-code logging/storage hardening");
+        if (mode != TandemX2ConnectionMode.OWN_PAIRING || pendingPairingPeripheral == null) {
+            return false;
         }
-        return false;
+        if (TandemX2RequestPolicy.normalizePairingCode(pairingCode) == null) {
+            notifyState(ConnectionState.PAIRING_REQUIRED, "Pairing code must be 6 digits or 16 characters");
+            return false;
+        }
+        pair(pendingPairingPeripheral, pendingCentralChallenge, pairingCode);
+        return true;
+    }
+
+    /**
+     * The steps of PumpX2 v1.9.3's TandemPump.pair() without its Timber lines, which print the
+     * pairing code and the J-PAKE derived secret. Keep in step with upstream when PumpX2 is
+     * upgraded.
+     */
+    @Override
+    public void pair(BluetoothPeripheral peripheral,
+                     @Nullable AbstractCentralChallengeResponse centralChallenge, String pairingCode) {
+        if (mode != TandemX2ConnectionMode.OWN_PAIRING) {
+            notifyState(ConnectionState.ERROR, "Pairing is only used in own-pairing mode");
+            return;
+        }
+        final String code = TandemX2RequestPolicy.normalizePairingCode(pairingCode);
+        if (code == null) {
+            onInvalidPairingCode(peripheral, null);
+            return;
+        }
+        if (PumpState.pairingCodeType == PairingCodeType.SHORT_6CHAR
+                || deviceModel == KnownDeviceModel.MOBI || code.length() == 6) {
+            PumpState.pairingCodeType = PairingCodeType.SHORT_6CHAR;
+            final String savedSecretHex = PumpState.getJpakeDerivedSecret(appContext);
+            PumpState.setJpakeServerNonce(appContext, "");
+            PumpState.setPairingCode(appContext, code);
+            JpakeAuthBuilder.clearInstance();
+            if (savedSecretHex == null || savedSecretHex.trim().isEmpty()) {
+                sendCommand(peripheral, JpakeAuthBuilder.initializeWithPairingCode(code).nextRequest());
+                return;
+            }
+            final byte[] savedSecret = TandemX2RequestPolicy.hexToBytes(savedSecretHex);
+            if (savedSecret == null) {
+                PumpState.setJpakeDerivedSecret(appContext, "");
+                onInvalidPairingCode(peripheral, null);
+                return;
+            }
+            sendCommand(peripheral, JpakeAuthBuilder.initializeWithDerivedSecret(code, savedSecret).nextRequest());
+        } else {
+            try {
+                PumpState.setPairingCode(appContext, code);
+                sendCommand(peripheral, PumpChallengeRequestBuilder.create(centralChallenge, code));
+            } catch (PumpChallengeRequestBuilder.InvalidPairingCodeFormat e) {
+                onInvalidPairingCode(peripheral, null);
+            }
+        }
+    }
+
+    @Override
+    public void onPumpModel(BluetoothPeripheral peripheral, KnownDeviceModel model) {
+        super.onPumpModel(peripheral, model);
+        deviceModel = model;
     }
 
     @Override
     public void onInitialPumpConnection(BluetoothPeripheral peripheral) {
-        notifyState(ConnectionState.AUTHENTICATING, "Bluetooth connected; authentication pending");
+        notifyState(ConnectionState.AUTHENTICATING, mode == TandemX2ConnectionMode.OWN_PAIRING
+                ? "Bluetooth connected; authentication pending"
+                : "Bluetooth connected; waiting for the Tandem app's traffic");
         super.onInitialPumpConnection(peripheral);
     }
 
@@ -146,6 +229,11 @@ public final class TandemX2PumpClient extends TandemPump {
     @Override
     public void onWaitingForPairingCode(BluetoothPeripheral peripheral,
                                         @Nullable AbstractCentralChallengeResponse centralChallenge) {
+        if (mode != TandemX2ConnectionMode.OWN_PAIRING) {
+            notifyState(ConnectionState.ERROR,
+                    "Pump asked for pairing; is the Tandem app connected? (" + mode + ")");
+            return;
+        }
         synchronized (this) {
             pendingPairingPeripheral = peripheral;
             pendingCentralChallenge = centralChallenge;
@@ -171,8 +259,12 @@ public final class TandemX2PumpClient extends TandemPump {
             pendingPairingPeripheral = null;
             pendingCentralChallenge = null;
         }
-        notifyState(ConnectionState.CONNECTED, "Authenticated; requesting allowlisted status fields");
         // Intentionally do not call super.onPumpConnected() because it logs authentication material.
+        if (mode == TandemX2ConnectionMode.LISTEN_ONLY) {
+            notifyState(ConnectionState.CONNECTED, "Listening to the pump's replies to the Tandem app");
+            return;
+        }
+        notifyState(ConnectionState.CONNECTED, "Authenticated; requesting allowlisted status fields");
         sendCommand(peripheral, new ApiVersionRequest());
         sendCommand(peripheral, new PumpVersionRequest());
         sendCommand(peripheral, new TimeSinceResetRequest());
@@ -224,29 +316,16 @@ public final class TandemX2PumpClient extends TandemPump {
     }
 
     /**
-     * Runtime safety gate. The dependency contains therapy-changing messages; this wrapper admits
-     * only authentication handshakes and fixed status reads. It does not accept arbitrary control
-     * or history messages from callers.
+     * Runtime safety gate: every outgoing message, including those PumpX2's handler sends on its
+     * own, goes through {@link TandemX2RequestPolicy#isAllowed}.
      */
     @Override
     public synchronized void sendCommand(BluetoothPeripheral peripheral, Message message) {
-        if (!isAllowedRequest(message)) {
-            notifyState(ConnectionState.ERROR, "Blocked non-allowlisted pump request");
+        if (!TandemX2RequestPolicy.isAllowed(mode, message)) {
+            notifyState(ConnectionState.ERROR, "Blocked request in " + mode + " mode");
             return;
         }
         super.sendCommand(peripheral, message);
-    }
-
-    private static boolean isAllowedRequest(Message message) {
-        if (message == null || message.getClass().getPackage() == null) return false;
-        if (AUTH_REQUEST_PACKAGE.equals(message.getClass().getPackage().getName())) return true;
-        return message instanceof ApiVersionRequest
-                || message instanceof PumpVersionRequest
-                || message instanceof TimeSinceResetRequest
-                || message instanceof CurrentBasalStatusRequest
-                || message instanceof CurrentBolusStatusRequest
-                || message instanceof ControlIQIOBRequest
-                || message instanceof NonControlIQIOBRequest;
     }
 
     private void publishSnapshot(long receivedAtMillis) {

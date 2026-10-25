@@ -50,7 +50,7 @@ The checked-in `.github/workflows/unit_test.yml` workflow is named “Unit Test�
 
 | Capability | Current state |
 |---|---|
-| Direct phone-to-t:slim X2 read-only Bluetooth client | Opt-in `TandemX2PumpClient` prototype using PumpX2 `v1.9.3`; no UI call site or physical test. Coexistence remains unknown. |
+| Direct phone-to-t:slim X2 read-only Bluetooth client | Opt-in `TandemX2PumpClient` prototype using PumpX2 `v1.9.3`, with three connection modes (section 10): listen only (default; shares Tandem's app's connection, sends nothing), shared reads, own pairing. Started only from the test screen; no physical test. Coexistence remains unknown. |
 | Tandem app local API/interface | No supported interface established by this repository inspection. |
 | Tandem Source/cloud client | Not implemented; not selected for the local-first initial path. |
 | Pump-reported IOB | Not implemented. |
@@ -60,7 +60,7 @@ The checked-in `.github/workflows/unit_test.yml` workflow is named “Unit Test�
 | Canonical Tandem snapshot model | Partial `TandemX2PumpSnapshot` exists for IOB, basal raw fields, and current bolus. Historical event model is not implemented. |
 | Tandem data persistence/refresh/stale handling | Not implemented. |
 | Tandem status message to Garmin | Not implemented. |
-| Tandem-specific settings and UI | Not implemented; the client is not invoked by a screen or application startup. |
+| Tandem-specific settings and UI | Dev test screen `TandemX2TestActivity` (from the Garmin bridge test screen): pump picker from bonded devices, mode choice, start/stop, pairing code entry, on-screen state and snapshot. No settings; nothing starts at app startup. |
 | Tandem fixtures and automated tests | Synthetic `TandemX2StatusMapperTest` passes (7/7, section 9). No pump-derived fixture. |
 | Phone-initiated bolus (owner-approved experiment, 2026-10-25) | Not implemented. Gates in `AGENTS.md`; PumpX2 provides the protocol messages. |
 
@@ -74,7 +74,7 @@ The upstream [tconnectsync](https://github.com/jwoglom/tconnectsync) repository 
 
 1. ~~Run the new mapper tests and compile the app with the pinned PumpX2 dependency; fix any API/version issues.~~ Done 2026-10-25 (section 9).
 2. Keep the client opt-in and unwired until a controlled hardware test is approved. Under the owner's 2026-10-25 decision, every pump session is a short supervised test after which Tandem's app is re-paired.
-3. Replace the blanket pairing refusal with a `pair()` override that logs neither the pairing code nor the J-PAKE derived secret (section 9), then add a dev-only phone test screen (pump MAC, pairing code, connect, show snapshot) for the first supervised session.
+3. ~~Replace the blanket pairing refusal with a `pair()` override that logs neither the pairing code nor the J-PAKE derived secret (section 9), then add a dev-only phone test screen (pump MAC, pairing code, connect, show snapshot) for the first supervised session.~~ Done 2026-10-25 (section 10), plus connection modes that keep Tandem's app connected. Next physical step: the listen-only session in the [test plan](Tandem_X2_Integration_Test_Plan.md#proposed-first-session-listen-only-needs-the-owners-go-ahead), with the owner's go-ahead.
 4. Experimental phone bolus behind the `AGENTS.md` gates, with tests for each gate, after read-only status works on the pump.
 5. Verify IOB and basal field semantics against a t:slim X2 and its displayed values; do not equate current-bolus status with historical bolus history.
 6. Add history requests only after current status reads and connection lifecycle are stable.
@@ -88,6 +88,8 @@ See [the design document](Tandem_X2_Integration.md) and [the test plan](Tandem_X
 Inspection of PumpX2 v1.9.3's `TandemPump.pair()` shows it emits a Timber INFO message containing the pairing code and stores the code through `PumpState` preferences. The wrapper intentionally refuses to pass a user-entered code into that method until log exposure and credential persistence have been reviewed and addressed. Passing a null logging tree to PumpX2 does not guarantee that another Timber tree is absent.
 
 This is a deliberate functional limitation, not a passing connection test. The current prototype may expose the pairing-required state, but a fresh pairing flow must not be enabled yet. Existing xDrip/Tandem connection coexistence and recovery also remain unverified.
+
+**Superseded 2026-10-25 (section 10):** the client now pairs through its own non-logging `pair()`, only in own-pairing mode, and refuses to start while a Timber tree is planted. Coexistence and recovery remain unverified.
 
 
 ## 8. Owner-confirmed end-state data paths (2026-10-25)
@@ -128,3 +130,21 @@ Claude Code, Windows 11 host, JDK 17.0.20.1, Android SDK 36, Gradle wrapper of t
 **Not tested:** G7 collection on a phone with this build (the unit tests cover libkeks crypto, not the BLE flow), any PumpX2 runtime path, `prodRelease`/CI variants, a physical pump or watch.
 
 **Pairing-code finding (source-derived, PumpX2 `v1.9.3` `TandemPump.pair()`):** besides the pairing code, the 6-digit (J-PAKE) branch also logs the **derived secret** (`PUMP-PAIR(SHORT_6CHAR, CONFIRM, pairingCode=…, derivedSecret=…)`), and that secret is reusable pump authentication material. xDrip's own source has no `Timber` calls or `Timber.plant`, and PumpX2 skips its debug tree when the handler gets a null tree, so these lines probably go nowhere in xDrip today (*inference; not checked at runtime*). `pair()` is public and non-final, and its building blocks (`PumpState`, `JpakeAuthBuilder`, `PumpChallengeRequestBuilder`) are public, so `TandemX2PumpClient` can override it with a version that does not log; that is the planned replacement for the current blanket refusal. `PumpState` keeps the code and derived secret in app-private SharedPreferences, the same protection as xDrip's saved G7 key.
+
+## 10. Connection modes, safe pairing and test screen (2026-10-25)
+
+Claude Code. Same host and toolchain as section 9.
+
+**Source-derived finding (PumpX2 `v1.9.3`, not in its README):** `TandemPump` can share the pump connection that the official Tandem app already has on the same phone. `enableTconnectAppConnectionSharing()` and `relyOnConnectionSharingForAuthentication()` make PumpX2 send no authentication message (sending one would make the pump drop the link the Tandem app is using, per the handler's comments); `enableSendSharedConnectionResponseMessages()` delivers the pump's replies to the Tandem app's requests to `onReceiveMessage`; `onlySnoopBluetoothAndBlockAllPumpX2Functionality()` blocks every PumpX2 write. So xDrip may be able to read pump data **while Tandem's app stays paired**, which would make continuous pump data compatible with the owner's 2026-10-25 decision (*to verify on the pump*). Bolus messages (`InitiateBolusRequest`, `CancelBolusRequest`, `BolusPermissionRequest`) are `signed=true` (HMAC with the pairing-derived secret), so an xDrip bolus needs own pairing.
+
+**Changes:**
+- `TandemX2ConnectionMode`: `LISTEN_ONLY` (default: sharing + PumpX2 snoop flag; sends no pump protocol message), `SHARED_READS` (sharing; sends the allowlisted status reads; PumpX2 also clears the qualifying-events characteristic itself, which may affect Tandem's app), `OWN_PAIRING` (xDrip authenticates; displaces Tandem's app). `TandemX2PumpClient.start()` sets all PumpX2 `PumpState` sharing flags for the mode, because they are process-wide statics.
+- `TandemX2RequestPolicy` (pure Java): the per-mode outgoing-message rules, the Timber guard, pairing-code normalization (PumpX2's own `processPairingCode`, 6-digit codes must be digits) and hex decoding of the saved secret.
+- `TandemX2PumpClient.pair()` overrides PumpX2's with the same steps minus its log lines, own-pairing mode only; `submitPairingCode()` now pairs instead of refusing. It tracks the pump model from `onPumpModel` (upstream keeps it private).
+- `TandemX2TestActivity`, opened by a new "Tandem pump test" button on the Garmin bridge test screen (not exported, no launcher icon). Own pairing asks for a second tap. Values appear on screen only.
+
+**Automated test evidence:** `:app:testFastDevUnitTest --tests 'com.eveningoutpost.dexdrip.tandem.*'` → `TandemX2RequestPolicyTest` 9/9, `TandemX2StatusMapperTest` 7/7; `:libkeks:testDebugUnitTest` → 7/7; `:app:assembleFastDev` succeeds.
+
+**Emulator evidence (Android 16 / API 36 AVD `xdrip36`, no Bluetooth pump, `fastDev` build):** the bridge screen opened (Garmin Connect missing, as before) and its "Tandem pump test" button opened the test screen. Start with an empty address showed "A specific pump Bluetooth MAC address is required"; Start in listen-only with `00:11:22:33:44:55` showed `SCANNING … (LISTEN_ONLY)`; Stop showed `STOPPED`; own pairing showed the second-tap prompt (not pressed). No crash, and no PumpX2 log lines in logcat for the app process.
+
+**Not tested:** any real pump; whether Android delivers another app's pump notifications to xDrip; how often Tandem's app requests the status fields; shared-reads and own-pairing behaviour; pairing on either code type; clearing the stored pairing state.

@@ -40,6 +40,8 @@ Add tests before a live provider exists:
 
 `libkeks/src/test/java/jamorham/keks/KeksBouncyCastleTest.java` (7 tests) guards the BouncyCastle 1.68 → 1.77 upgrade PumpX2 required: golden EC/hash/packet vectors recorded on 1.68, a two-party J-PAKE round trip, wrong-password and tampered-proof rejection, and an independently verified challenge signature. Run with `gradlew :libkeks:testDebugUnitTest`.
 
+`app/src/test/java/com/eveningoutpost/dexdrip/tandem/TandemX2RequestPolicyTest.java` (9 tests, all passing 2026-10-25) covers the outgoing-message policy per connection mode: listen-only sends nothing, shared reads never send authentication, own pairing sends authentication and status reads; bolus, cancel-bolus, suspend and temp-rate requests are blocked in every mode; history requests are not allowlisted yet; pairing-code normalization; hex decoding of the saved secret; and the Timber guard.
+
 ## 4. Provider/adapter tests
 
 Use a fake local provider with fixed fixture input to verify:
@@ -71,7 +73,9 @@ Keep current G7 pairing/authentication fixtures and Tandem fixtures separate.
 
 ### Pairing-code safety gate (must pass before fresh pairing is enabled)
 
-PumpX2 v1.9.3's current `TandemPump.pair()` logs the pairing code through Timber and persists it through `PumpState`. The adapter's `submitPairingCode()` intentionally returns false and does not invoke the library while this is unresolved. Before enabling fresh pairing:
+**Status 2026-10-25 (Claude Code):** addressed in source, partly covered by tests. `TandemX2PumpClient.pair()` replaces PumpX2's `pair()` without its log lines; the client never calls `super.onPumpConnected()`; `start()` refuses while any Timber tree is planted (`TandemX2RequestPolicyTest.loggingGuardFailsClosedWhenATreeIsPlanted`); pairing is accepted only in `OWN_PAIRING` mode, and malformed codes are rejected (`pairingCodesAreNormalizedOrRejected`). Storage: PumpX2's `PumpState` keeps the code and derived secret in app-private SharedPreferences (same protection as xDrip's saved G7 key); clearing them is not implemented yet. **Not covered by tests:** the mode check inside the client (needs an Android runtime), and a captured-log check during a real pairing.
+
+Original gate text: PumpX2 v1.9.3's current `TandemPump.pair()` logs the pairing code through Timber and persists it through `PumpState`. Before enabling fresh pairing:
 - Remove or safely redact upstream pairing-code logging and review other authentication/protocol logs for key/challenge leakage.
 - Document the intended local storage, retention, and clearing behavior for pairing code and derived authentication state.
 - Add a deterministic test proving the adapter refuses pairing until the safety gate is enabled, and tests that no credential material appears in captured logs.
@@ -102,6 +106,18 @@ Do not begin until all are true:
 5. The test does not depend on modifying pump settings or performing a bolus.
 
 Record pump model/firmware, Tandem app version, phone Android version, xDrip build/commit, exact test sequence, data fields observed, source-to-display timing, disconnections, and recovery outcome. Do not commit sensitive raw captures.
+
+#### Proposed first session: listen only (needs the owner's go-ahead)
+
+Goal: learn whether xDrip sees any pump data while Tandem's app keeps the connection, without sending anything to the pump.
+
+1. Phone setup unchanged: Tandem's app paired and connected to the pump as every day. Note pump firmware, Tandem app version and Android version.
+2. Install the `fastDev` build (package `com.eveningoutpost.dexdrip.garminbridge`, side by side with the daily xDrip; it does not collect the G7 unless set up to).
+3. Open "Garmin bridge test" → **Tandem pump test**. Pick the pump from the bonded-device buttons (the pump is bonded to the phone by Tandem's app). Leave **Listen only** selected. Press **Start**.
+4. Open Tandem's app for a minute (it requests status when shown), then come back. Watch the screen for `CONNECTED: Listening…` and `Snapshot` lines; compare any IOB value with the pump's own screen.
+5. Press **Stop** after about 10 minutes, or at once if Tandem's app shows any connection problem.
+
+Pass: Tandem's app works throughout and after; any IOB shown matches the pump. Expected-uncertain: no snapshot at all (Tandem's app may not request these fields, or Android may not deliver another app's notifications). Recovery: listen-only sends no pump protocol message, so stopping (or force-stopping the test app) is the full rollback; if Tandem's app still misbehaves, force-stop it and reopen it. Record what the screen showed (it is not written to any log).
 
 ### Gate E — repeatable end-to-end evidence
 
