@@ -3,6 +3,12 @@ buildscript {
         mavenCentral()
     }
     dependencies {
+
+    // Tandem t:slim X2 local Bluetooth status prototype. Keep these pinned and
+    // keep all PumpX2 calls behind the read-only wrapper in tandem/.
+    implementation "com.github.jwoglom.pumpX2:pumpx2-android:v1.9.3"
+    implementation "com.github.jwoglom.pumpX2:pumpx2-messages:v1.9.3"
+    implementation "com.github.jwoglom.pumpX2:pumpx2-shared:v1.9.3"
         if (getGradle().getStartParameter().getTaskRequests().toString().contains("Release]")) {
            // println("Enabling New Relic")
            // classpath "com.newrelic.agent.android:agent-gradle-plugin:5.27.1"
