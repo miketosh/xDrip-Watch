@@ -43,7 +43,7 @@ This fork's `garmin-bridge` branch contains experimental phone-to-Garmin Connect
 - [Tandem implementation status](Documentation/technical/Tandem_X2_Integration_Status.md)
 - [Tandem integration test plan](Documentation/technical/Tandem_X2_Integration_Test_Plan.md)
 
-The design is local-first and intended to be read-only at the therapy level. PumpX2 is experimental and not an official Tandem SDK; the wrapper allowlists authentication and selected status requests only. Do not start a live pump session before official-app coexistence/recovery is reviewed. Never treat modeled insulin estimates as pump-reported values.
+The design is local-first and intended to be read-only at the therapy level. PumpX2 is experimental and not an official Tandem SDK; the wrapper allowlists authentication and selected status requests only. Fresh pairing is deliberately blocked because PumpX2 v1.9.3 logs and persists pairing codes. Do not start a live pump session before pairing-secret handling and official-app coexistence/recovery are reviewed. Never treat modeled insulin estimates as pump-reported values.
 
 ## Ethos
 * Developed using Rapid Prototyping methodology

@@ -67,6 +67,16 @@ Keep current G7 pairing/authentication fixtures and Tandem fixtures separate.
 
 ## 6. Integration gates
 
+### Pairing-code safety gate (must pass before fresh pairing is enabled)
+
+PumpX2 v1.9.3's current `TandemPump.pair()` logs the pairing code through Timber and persists it through `PumpState`. The adapter's `submitPairingCode()` intentionally returns false and does not invoke the library while this is unresolved. Before enabling fresh pairing:
+- Remove or safely redact upstream pairing-code logging and review other authentication/protocol logs for key/challenge leakage.
+- Document the intended local storage, retention, and clearing behavior for pairing code and derived authentication state.
+- Add a deterministic test proving the adapter refuses pairing until the safety gate is enabled, and tests that no credential material appears in captured logs.
+- Do not rely solely on passing a null Timber tree; another app/library may have installed a tree.
+
+
+
 ### Gate A — no-pump local tests
 
 Pass criteria: all model/parser/provider tests pass with synthetic fixtures; no live network access or Bluetooth device is required. Verify that non-authentication PumpX2 requests outside the fixed read-only status allowlist are blocked.
