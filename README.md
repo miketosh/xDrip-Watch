@@ -6,6 +6,8 @@ This repository is not an official xDrip/Nightscout release. The upstream xDrip 
  <img align="right" src="Documentation/images/download-xdrip-plus-qr-code.png">
  Upstream xDrip resources and downloads: https://jamorham.github.io/#xdrip-plus
 
+**Upstream project badges (not this fork's build status):**
+
 <img align="right" src="https://travis-ci.org/jamorham/xDrip-plus.svg?branch=master"><a align="right" title="Crowdin" target="_blank" href="https://crowdin.com/project/xdrip"><img align="right" src="https://badges.crowdin.net/xdrip/localized.svg"></a>
 
 ## Features
@@ -14,7 +16,6 @@ This repository is not an official xDrip/Nightscout release. The upstream xDrip 
 * Improved alerts and predictive low forecasting feature
 * Instant data synchronization between phones and tablets
 * Support for many different data sources
-* Published by the Nightscout Foundation
 
  <img align="middle" src="https://jamorham.github.io/images/jamorham-natural-language-treatments-two-web.png">
 
