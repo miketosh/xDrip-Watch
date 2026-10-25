@@ -6,7 +6,7 @@
 
 ## 1. Purpose
 
-Add a local-first, read-only path for Tandem pump status and history into the existing phone-to-Garmin integration. The intended value is a Garmin glanceable view of pump-reported insulin on board (IOB), recent boluses and their delivery status, basal-rate information, and data freshness. More detailed event history can be considered after a reliable live snapshot is established.
+Add a local-first, read-only path for Tandem pump status and history into xDrip, then relay selected pump data to the Garmin. Separately, the Garmin reads glucose directly from the Dexcom G7 and reports accepted readings back to xDrip. The intended value is a Garmin glanceable view of pump-reported insulin on board (IOB), recent boluses and their delivery status, basal-rate information, and data freshness. More detailed event history can be considered after a reliable live snapshot is established.
 
 The source must remain explicit. A value reported by the pump, a value inferred from xDrip's treatment/insulin model, and a value imported from an uploaded history are not interchangeable.
 
@@ -47,11 +47,11 @@ No public, supported Tandem developer API or usable local interface has been est
 
 **Implementation decision:** use the pinned PumpX2 `v1.9.3` library behind `TandemX2PumpClient`, with a request allowlist and transport-independent `TandemX2PumpSnapshot`. A specific target Bluetooth address is required; the client starts only when explicitly called and is not currently wired to app startup, UI, or GarminBridge. Do not add a cloud dependency.
 
-## 3A. Nightscout is a separate sink, not the local pump source
+## 3A. Local peer exchange is not Nightscout cloud
 
-The xDrip app already includes general Nightscout integration components such as `NightscoutUploader` and `NightscoutTreatments`. This makes the existing app uploader the first integration point to inspect if verified Tandem pump events should optionally be uploaded. The current Tandem prototype does **not** call it and does not implement a second uploader.
+Nightscout's HTTP API is not the local phone↔watch protocol. The requested feature does not require uploading data to a Nightscout server. xDrip has Android Wear OS Data Layer and legacy external-status patterns, but neither is the Garmin wire protocol. Use Garmin Connect IQ Mobile SDK messaging for xDrip↔Garmin and keep pump↔xDrip local pump communication separate.
 
-The upstream [tconnectsync](https://github.com/jwoglom/tconnectsync) project already maps cloud-retrieved Tandem Source events into Nightscout basal/bolus/profile entries, but its event source differs from PumpX2 Bluetooth responses. See [Tandem vs. Nightscout integration options](Tandem_Nightscout_Integration_Options.md) before reusing any code or defining upload behavior.
+See [the canonical local data-exchange contract](LOCAL_DATA_EXCHANGE_ARCHITECTURE.md). The existing prototype has only phone→watch `ping` and saved G7 `key` message types. There is no pump-status message or watch→phone glucose receive path yet. Do not add cloud upload as part of the Tandem feature.
 
 ## 4. Proposed architecture
 

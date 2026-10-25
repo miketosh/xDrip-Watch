@@ -1,3 +1,5 @@
+> **Documentation update (2026-10-25): SUPERSEDED FOR ARCHITECTURE.** The project does not require a Nightscout cloud uploader. This file remains as upstream comparison/reference notes only. The canonical system design is [Local data exchange architecture](LOCAL_DATA_EXCHANGE_ARCHITECTURE.md). Do not implement the old optional-uploader recommendation as part of the current goal.
+
 # Tandem X2 data and Nightscout integration options
 
 **Reviewed:** 2026-10-25  
@@ -5,7 +7,7 @@
 
 ## Decision summary
 
-**Use PumpX2 as the candidate local pump-data source and prefer xDrip's existing Nightscout pathways if an optional upload feature is later wanted. Do not clone tconnectsync wholesale into the Android app.**
+**Use PumpX2 as the candidate local pump-data source. Do not clone tconnectsync's cloud uploader into the Android app. This feature has no Nightscout-server upload requirement.**
 
 - **PumpX2** provides a reverse-engineered local Bluetooth protocol library for t:slim X2/Mobi, including current-status responses and partially supported history parsing. Its README does not describe Nightscout uploading, and a source search found no Nightscout integration in that repository. It is the local-data option, but it is experimental and has therapy-changing APIs that must remain blocked by our wrapper.
 - **tconnectsync** already implements Tandem-to-Nightscout synchronization, but it reads Tandem Source's undocumented cloud API. It can synchronize basal, bolus, IOB, pump events, and profiles; optional CGM upload is explicitly delayed by more than 30 minutes and is not intended as a real-time monitoring source. This is useful as a reference for Nightscout object semantics and history mapping, but it is not a cloud-free pump connection.

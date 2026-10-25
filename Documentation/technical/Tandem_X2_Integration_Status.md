@@ -84,3 +84,16 @@ See [the design document](Tandem_X2_Integration.md) and [the test plan](Tandem_X
 Inspection of PumpX2 v1.9.3's `TandemPump.pair()` shows it emits a Timber INFO message containing the pairing code and stores the code through `PumpState` preferences. The wrapper intentionally refuses to pass a user-entered code into that method until log exposure and credential persistence have been reviewed and addressed. Passing a null logging tree to PumpX2 does not guarantee that another Timber tree is absent.
 
 This is a deliberate functional limitation, not a passing connection test. The current prototype may expose the pairing-required state, but a fresh pairing flow must not be enabled yet. Existing xDrip/Tandem connection coexistence and recovery also remain unverified.
+
+
+## 8. Owner-confirmed end-state data paths (2026-10-25)
+
+- t:slim X2 continues to talk directly to the Dexcom G7 using its pump/AID connection.
+- xDrip's Tandem adapter is intended to obtain pump IOB/basal status and pull pump history locally. It remains prototype-only; fresh pairing is blocked and no real-pump validation is recorded.
+- The Garmin continues to read glucose directly from the G7. Watch-to-phone glucose reporting is planned, not implemented.
+- xDrip-to-watch pump status/bolus reporting is planned, not implemented.
+- No Nightscout server upload is required. The Garmin path uses the Connect IQ phone-message bridge; xDrip's Android Wear Data Layer and Nightscout REST uploader are not Garmin substitutes.
+- Preferred G7 authentication slot is watch `0x03`; if that path cannot be made reliable, app `0x02` is an acceptable final endpoint. When the watch uses `0x02`, xDrip must not simultaneously collect from the G7 in the final configuration. The pump's independent G7 connection must remain undisturbed.
+- Mobile bolus is out of scope. Whether any third-party API supports it is unverified; the current goal is read-only status and history.
+
+See [the local data-exchange contract](LOCAL_DATA_EXCHANGE_ARCHITECTURE.md).

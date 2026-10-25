@@ -13,7 +13,7 @@ Read this file before changing code, tests, build configuration, or documentatio
 
 - Preserve existing xDrip behavior while developing an explicit, versioned phone-to-Garmin data bridge.
 - Planned Tandem support is for the owner's **Tandem t:slim X2** and Android phone. The desired output is read-only pump status and history data for the Garmin watch, with source and freshness information.
-- Prefer a local phone-to-pump data path. Do not add a cloud dependency merely for convenience. Any cloud/Tandem Source path is a separately documented fallback proposal, not the default architecture.
+- Prefer local BLE from xDrip to the pump. Tandem Source and Nightscout cloud upload are not required. Garmin phone/watch messaging is a separate Connect IQ path.
 - The current PumpX2-based code is an **opt-in prototype**, not working Tandem support. Until end-to-end evidence exists, describe support as **not yet verified**. Do not imply that xDrip currently reads Tandem X2 data in normal operation.
 - This integration is for display and personal research only. It is not a medical device and must not be presented as a replacement for the pump display, Tandem's supported app, CGM alerts, or clinical advice.
 
@@ -39,6 +39,14 @@ Read this file before changing code, tests, build configuration, or documentatio
 - Do not promote a hypothesis to a fact because a build passes or because another project claims support. Record the exact source revision and model/firmware where relevant.
 - Update the technical document and status/test plan in the same change as any feature or protocol change. If a code path is removed or replaced, revise the docs rather than leaving a historic experiment described as current.
 - Prefer the repository's code, tests, fixture data, and existing documentation as the first source of truth. Do not introduce internet access at runtime for Tandem support. External research may be used when necessary, but record what it establishes and what remains unverified.
+
+## Cross-repository integration contract and agent handoff
+
+- Read [the local data exchange architecture](Documentation/technical/LOCAL_DATA_EXCHANGE_ARCHITECTURE.md) before changing Tandem access, Garmin phone/watch messaging, or shared status/history fields. It is the canonical cross-repository contract.
+- The owner coordinates separate coding-agent sessions: one owns xDrip-to-t:slim X2 status/history, another owns Garmin-to-G7 collection; the document owner coordinates contracts and docs. Do not rely on chat-only decisions.
+- Preferred G7 channel is watch slot/DisplayType `0x03`; if that cannot be made reliable, app slot `0x02` is an acceptable end state. If slot `0x02` is used, xDrip must no longer collect G7 in the final configuration; do not claim simultaneous ownership of the same slot. Preserve the pump's independent G7 connection.
+- “Nightscout API” means client/server communication with a Nightscout server, not xDrip↔Garmin messaging. No Nightscout upload is required. Android Wear Data Layer is only a design reference; Garmin messaging uses the Connect IQ Mobile SDK/Communications path.
+- Keep roles separate: local read-only Tandem status/history, direct watch-to-G7 collection, phone-to-watch pump data, and watch-to-phone glucose reports. No mobile bolus or therapy-changing commands in this scope.
 
 ## Architecture boundaries
 
