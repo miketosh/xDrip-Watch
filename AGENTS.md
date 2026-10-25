@@ -7,7 +7,7 @@ Read this file before changing code, tests, build configuration, or documentatio
 - The active Garmin bridge work is on `garmin-bridge`. Continue there with small, sequential, reviewable changes unless the owner asks to change the workflow. Do not force-push, reset, or overwrite another contributor's work.
 - The baseline is **not yet proven on physical hardware**. A successful Android build, a Connect IQ simulator run, or a successful SDK `sendMessage` callback does not prove end-to-end phone-to-watch delivery or live G7 collection.
 - The working tree of this fork is the phone-side xDrip Android app. The Garmin Connect IQ app and its simulator/device tests live in the separate [garmin7-scout repository](https://github.com/miketosh/garmin7-scout). Keep the phone and watch contracts documented in both places when they change.
-- Current branch baseline inspected for the Tandem design: `2de12256` (2026-10-24). See [Tandem integration status](Documentation/technical/Tandem_X2_Integration_Status.md) for the exact scope of that inspection.
+- Current Tandem prototype status and its validation limits are tracked in [Tandem integration status](Documentation/technical/Tandem_X2_Integration_Status.md). The current end-to-end architecture is documented in [LOCAL_DATA_EXCHANGE_ARCHITECTURE.md](Documentation/technical/LOCAL_DATA_EXCHANGE_ARCHITECTURE.md).
 
 ## Product goal and scope
 

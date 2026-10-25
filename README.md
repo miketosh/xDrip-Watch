@@ -48,7 +48,7 @@ This fork's `garmin-bridge` branch contains experimental phone-to-Garmin Connect
 
 The design is local-first and intended to be read-only at the therapy level. PumpX2 is experimental and not an official Tandem SDK; the wrapper allowlists authentication and selected status requests only. Fresh pairing is deliberately blocked because PumpX2 v1.9.3 logs and persists pairing codes. Do not start a live pump session before pairing-secret handling and official-app coexistence/recovery are reviewed. Never treat modeled insulin estimates as pump-reported values.
 
-- [Tandem vs. Nightscout integration options](Documentation/technical/Tandem_Nightscout_Integration_Options.md)
+- [Why Nightscout REST is not the local exchange protocol](Documentation/technical/Tandem_Nightscout_Integration_Options.md)
 - [Local Tandem ↔ xDrip ↔ Garmin data-exchange contract](Documentation/technical/LOCAL_DATA_EXCHANGE_ARCHITECTURE.md)
 - xDrip already contains general Nightscout upload/download components. No Nightscout cloud upload is required for the intended local system. The cross-repository contract documents local Tandem↔xDrip status/history and bidirectional xDrip↔Garmin messages. The current prototype is not wired into those end-to-end flows.
 

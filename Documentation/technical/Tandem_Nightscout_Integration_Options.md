@@ -1,52 +1,38 @@
-> **Documentation update (2026-10-25): SUPERSEDED FOR ARCHITECTURE.** The project does not require a Nightscout cloud uploader. This file remains as upstream comparison/reference notes only. The canonical system design is [Local data exchange architecture](LOCAL_DATA_EXCHANGE_ARCHITECTURE.md). Do not implement the old optional-uploader recommendation as part of the current goal.
+# Why Nightscout REST is not the local exchange protocol
 
-# Tandem X2 data and Nightscout integration options
+**Status:** Reference note only; superseded by the [canonical local data-exchange architecture](LOCAL_DATA_EXCHANGE_ARCHITECTURE.md).  
+**Updated:** 2026-10-25
 
-**Reviewed:** 2026-10-25  
-**Scope:** t:slim X2 data acquisition, existing xDrip Nightscout components, upstream PumpX2, and upstream tconnectsync. This is a design decision record, not evidence of a working pump connection.
+## Decision
 
-## Decision summary
+The intended feature does **not** need to upload pump information to a Nightscout server. Do not copy a Nightscout cloud uploader or make Nightscout hosting a dependency for the Tandem/Garmin integration.
 
-**Use PumpX2 as the candidate local pump-data source. Do not clone tconnectsync's cloud uploader into the Android app. This feature has no Nightscout-server upload requirement.**
+Nightscout REST is an HTTP API for an application communicating with a configured Nightscout server. It is not the protocol for xDrip and a Garmin watch to exchange messages locally.
 
-- **PumpX2** provides a reverse-engineered local Bluetooth protocol library for t:slim X2/Mobi, including current-status responses and partially supported history parsing. Its README does not describe Nightscout uploading, and a source search found no Nightscout integration in that repository. It is the local-data option, but it is experimental and has therapy-changing APIs that must remain blocked by our wrapper.
-- **tconnectsync** already implements Tandem-to-Nightscout synchronization, but it reads Tandem Source's undocumented cloud API. It can synchronize basal, bolus, IOB, pump events, and profiles; optional CGM upload is explicitly delayed by more than 30 minutes and is not intended as a real-time monitoring source. This is useful as a reference for Nightscout object semantics and history mapping, but it is not a cloud-free pump connection.
-- **This xDrip codebase already has Nightscout infrastructure**, including `NightscoutUploader`, `NightscoutTreatments`, upload/download tests, and treatment/device-status concepts. Before adding another uploader, inspect and extend the existing xDrip path in a small isolated change.
+## Relevant existing projects and code
 
-## Comparison
+- [pumpX2](https://github.com/jwoglom/pumpX2) is the candidate local Bluetooth source for Tandem t:slim X2 status/history. It is experimental, reverse-engineered, and not an official Tandem SDK. History support and live-pump behavior require validation.
+- [tconnectsync](https://github.com/jwoglom/tconnectsync) already maps Tandem Source **cloud** events into Nightscout entries. It is useful as a reference for how cloud history was represented, but its source events are not PumpX2 Bluetooth responses and its transport is not what this project needs.
+- xDrip's WatchUpdaterService and SendToDataLayerThread use Google's Android Wear OS Data Layer for legacy Wear OS communication. That transport is distinct from Garmin Connect IQ.
+- The existing GarminBridge uses Garmin's Connect IQ Mobile SDK on Android; the watch registers with Connect IQ Communications. This is the intended xDrip↔Garmin message transport. It has its own delivery constraints, but it does not require a Nightscout-server upload.
+- ExternalStatusBroadcastReceiver / ExternalStatusService consume a compact, legacy Android intent/status-line contract. It is too ambiguous for the desired typed IOB, basal, bolus, history, timestamps, and freshness fields; do not adopt it as the new cross-device schema.
 
-| Project | Data source | Nightscout integration | Fit for the current goal |
-|---|---|---|---|
-| [pumpX2](https://github.com/jwoglom/pumpX2) | Local Bluetooth to pump | No Nightscout uploader found in its README/source search | Best candidate for local current status. Its read-only field coverage and live-pump behavior still require validation. |
-| [tconnectsync](https://github.com/jwoglom/tconnectsync) | Tandem Source cloud API | Complete one-way data synchronization into Nightscout | Good reference for basal/bolus/event/profile object mapping, but introduces cloud/account dependencies and upload latency. |
-| [xDrip-Watch](https://github.com/miketosh/xDrip-Watch) | Existing xDrip collectors/models plus proposed PumpX2 adapter | Existing general-purpose Nightscout upload/download components are already in the app | Prefer adapting verified pump data to existing xDrip models/uploader, with user-configured Nightscout upload remaining separate from local Garmin display. |
+## Intended data movement
 
-## What is reusable from tconnectsync?
+1. The t:slim X2 keeps its direct pump/AID connection to the Dexcom G7.
+2. xDrip reads Tandem pump status and history locally through a validated read-only PumpX2 adapter.
+3. The Garmin watch reads glucose directly from the G7.
+4. xDrip sends pump status/recent bolus information to the watch through the versioned Garmin phone-message path.
+5. The watch reports accepted direct-G7 glucose readings back to xDrip through the reverse message path.
+6. No Nightscout-server upload is needed for these flows.
 
-The upstream `tconnectsync` repository includes a Nightscout client and explicit mapping of Tandem Source events to Nightscout basal and bolus entries. The most useful parts to study are:
+The watch slot/DisplayType 0x03 is preferred for direct G7 access. If it cannot be made reliable, app slot 0x02 is an acceptable final fallback provided xDrip no longer collects G7 directly while the watch owns that single-occupancy slot. The pump's own G7 connection remains intact.
 
-- `tconnectsync/nightscout.py`: HTTP/API behavior for Nightscout.
-- `tconnectsync/parser/nightscout.py`: Nightscout entry shapes.
-- `tconnectsync/sync/tandemsource/process_bolus.py`: mapping completed cloud bolus events to treatment entries.
-- `tconnectsync/sync/tandemsource/process_basal.py`: mapping basal events and durations.
-- `tconnectsync/sync/tandemsource/update_profiles.py`: profile representation.
+## Implementation state
 
-These processors consume Tandem Source event records, **not** PumpX2 Bluetooth response objects. They are not drop-in adapters for the local BLE stream. A port must preserve source timestamps, event IDs/deduplication, partial/cancelled delivery semantics, time zones, and basal-duration rules. Do not assume programmed basal rate and actual delivered basal are interchangeable.
+- PumpX2 adapter in xDrip-Watch: prototype only; real-pump behavior/history are not verified and fresh pairing is currently blocked by the documented pairing-secret logging/storage concern.
+- Phone-to-watch ping and saved-G7-key message types exist as prototype paths.
+- Phone-to-watch pump status/history and watch-to-phone glucose reading messages are not implemented end-to-end.
+- Mobile bolus is out of scope. The availability of a third-party-supported mobile-bolus API is unknown; do not infer permission or availability from the existence of control methods in an experimental library.
 
-Both upstream projects publish MIT licenses. If code is copied rather than independently implemented from behavior, preserve the applicable copyright/license notice and review all dependency/version interactions. This prototype currently copies no tconnectsync code.
-
-## Recommended architecture
-
-1. Keep local pump reads behind `TandemX2PumpClient` and map only validated PumpX2 response types into the canonical phone-side model.
-2. Keep the Garmin status path local and independent of Nightscout. A Nightscout outage must not prevent a local snapshot from being shown.
-3. If Nightscout upload is desired, first determine whether a verified event can be represented using xDrip's existing treatment/device-status models and queued uploader. Avoid creating a second upload client unless the existing path demonstrably cannot represent the needed data.
-4. Do not upload a current snapshot as a fabricated historical event. Only pump events with reliable timestamps and semantics should become Nightscout treatment/history entries. IOB and basal current status require explicit field/type decisions before upload.
-5. Make any additional Nightscout upload behavior user-configurable and covered by local tests; never require Tandem Source credentials for the local Bluetooth path.
-
-## Current state and non-goals
-
-- The PumpX2 adapter prototype currently maps selected IOB responses, current basal status (raw/unscaled fields), and current-bolus status.
-- The current-bolus response is not historical last-bolus history.
-- No history stream or Nightscout upload has been wired into the prototype.
-- No live pump or end-to-end Nightscout test has been performed.
-- This document does not recommend using Tandem Source cloud data for real-time insulin information.
+For the canonical topology, slot selection policy, responsibility split, proposed messages, and evidence requirements, read [LOCAL_DATA_EXCHANGE_ARCHITECTURE.md](LOCAL_DATA_EXCHANGE_ARCHITECTURE.md).
