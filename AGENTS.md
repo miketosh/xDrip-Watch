@@ -74,7 +74,7 @@ Read this file before changing code, tests, build configuration, or documentatio
 - `wear/src/test/`: legacy Wear OS module tests; not a substitute for Garmin Connect IQ tests.
 - `GarminBridgeTestActivity`: a manual phone-side bridge test screen, not an automated unit test.
 - Garmin-side host/simulator and physical-watch evidence belongs in the separate `garmin7-scout` repository.
-- Do not claim Tandem coverage until Tandem-specific deterministic tests exist. Do not connect to the live pump as a test shortcut.
+- Do not claim Tandem test coverage until Tandem-specific deterministic tests have been executed successfully and their scope/results are recorded. Test source files alone are not evidence of passing tests. Do not connect to the live pump as a test shortcut.
 
 ## Definition of done
 
