@@ -34,6 +34,16 @@ Customization allows for different options to configure alarms, vocalize reading
 
 Your data is yours and can be exported in many different ways. xDrip also intercommunicates with other apps, for example sending and receiving live data with AndroidAPS.
 
+## xDrip-Watch fork development (experimental)
+
+This fork's `garmin-bridge` branch contains experimental phone-to-Garmin Connect IQ bridge work. It is separate from upstream xDrip support. The planned Tandem t:slim X2 integration is **documentation/design only** at this time; no Tandem pump connection or data extraction is implemented.
+
+- [Working agreement for contributors and coding assistants](AGENTS.md)
+- [Tandem t:slim X2 integration design](Documentation/technical/Tandem_X2_Integration.md)
+- [Tandem implementation status](Documentation/technical/Tandem_X2_Integration_Status.md)
+- [Tandem integration test plan](Documentation/technical/Tandem_X2_Integration_Test_Plan.md)
+
+The design is local-first and read-only. It must not send therapy-changing commands or treat modeled insulin estimates as pump-reported values.
 
 ## Ethos
 * Developed using Rapid Prototyping methodology
@@ -54,4 +64,3 @@ We are very happy if people want to collaborate with this project. Please contac
 
 ## Thanks
 None of this would be possible without all the hard work of the xDrip and Nightscout communities who have developed such excellent software and allowed us to build upon it.
-
