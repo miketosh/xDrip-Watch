@@ -1,6 +1,6 @@
 # Tandem t:slim X2 integration — test plan
 
-**Status:** Synthetic mapper-test source exists but has not been executed in this environment. The opt-in PumpX2 client has no UI caller and has not been tested against a physical pump.
+**Status:** Synthetic mapper tests pass locally (7/7, 2026-10-25; see [status, section 9](Tandem_X2_Integration_Status.md#9-build-and-test-evidence-2026-10-25)). The opt-in PumpX2 client has no UI caller and has not been tested against a physical pump.
 
 ## 1. Test principles
 
@@ -36,7 +36,9 @@ Add tests before a live provider exists:
 - Basal raw-field preservation without assuming its scale.
 - Current-bolus sentinel and requested-volume mapping.
 
-These tests are source additions only; their execution has not yet been verified.
+**Automated test evidence (2026-10-25):** `gradlew :app:testFastDevUnitTest --tests 'com.eveningoutpost.dexdrip.tandem.*'`: 7 tests, 0 failures, on a Windows host with JDK 17. They check the mapping of synthetic PumpX2 response objects only, not live-pump semantics.
+
+`libkeks/src/test/java/jamorham/keks/KeksBouncyCastleTest.java` (7 tests) guards the BouncyCastle 1.68 → 1.77 upgrade PumpX2 required: golden EC/hash/packet vectors recorded on 1.68, a two-party J-PAKE round trip, wrong-password and tampered-proof rejection, and an independently verified challenge signature. Run with `gradlew :libkeks:testDebugUnitTest`.
 
 ## 4. Provider/adapter tests
 

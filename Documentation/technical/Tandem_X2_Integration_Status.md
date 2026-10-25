@@ -3,7 +3,7 @@
 **Last reviewed:** 2026-10-25  
 **Source baseline before implementation:** `79096f07c059d8df09da87d805a0d80cc9813932` (2026-10-25)  
 **Tandem integration status:** Opt-in adapter prototype; no end-to-end functionality verified  
-**Validation performed:** PumpX2 source/API inspection and synthetic mapper tests added. No Gradle build/test, live pump connection, or physical Garmin test was run in this environment.
+**Validation performed:** PumpX2 source/API inspection; on 2026-10-25 the app compiles and assembles (`fastDev`) with PumpX2 after two build fixes, and the synthetic mapper tests pass (section 9). No live pump connection or physical Garmin test has been run.
 
 ## 1. Scope and current facts
 
@@ -36,7 +36,8 @@ Treat those statuses as reported by the companion project's documentation, not a
 
 ## 4. Where tests live
 
-- `app/src/test/` contains phone-app unit-test sources, including `TandemX2StatusMapperTest` (source added; execution not yet verified).
+- `app/src/test/` contains phone-app unit-test sources, including `TandemX2StatusMapperTest` (7/7 pass, 2026-10-25; section 9).
+- `libkeks/src/test/` contains `KeksBouncyCastleTest`, the first libkeks (G7 J-PAKE) tests, added to cover the BouncyCastle upgrade PumpX2 required.
 - `app/src/androidTest/` contains Android instrumentation-test sources.
 - `wear/src/test/` contains tests for the legacy Android Wear module. These tests are not the Garmin Connect IQ app tests.
 - `GarminBridgeTestActivity` is a manual test UI in `app/src/main`, not a test under `app/src/test`.
@@ -60,7 +61,8 @@ The checked-in `.github/workflows/unit_test.yml` workflow is named “Unit Test�
 | Tandem data persistence/refresh/stale handling | Not implemented. |
 | Tandem status message to Garmin | Not implemented. |
 | Tandem-specific settings and UI | Not implemented; the client is not invoked by a screen or application startup. |
-| Tandem fixtures and automated tests | Synthetic `TandemX2StatusMapperTest` source added; not run. No pump-derived fixture. |
+| Tandem fixtures and automated tests | Synthetic `TandemX2StatusMapperTest` passes (7/7, section 9). No pump-derived fixture. |
+| Phone-initiated bolus (owner-approved experiment, 2026-10-25) | Not implemented. Gates in `AGENTS.md`; PumpX2 provides the protocol messages. |
 
 ## 6. Nightscout integration finding
 
@@ -70,11 +72,13 @@ The upstream [tconnectsync](https://github.com/jwoglom/tconnectsync) repository 
 
 ## 7. Next steps
 
-1. Run the new mapper tests and compile the app with the pinned PumpX2 dependency; fix any API/version issues.
-2. Keep the client opt-in and unwired until a controlled hardware test is approved.
-3. Verify IOB and basal field semantics against a t:slim X2 and its displayed values; do not equate current-bolus status with historical bolus history.
-4. Add history requests only after current status reads and connection lifecycle are stable.
-5. Obtain explicit owner approval for a live-pump test after official-app coexistence and rollback/recovery risks are assessed.
+1. ~~Run the new mapper tests and compile the app with the pinned PumpX2 dependency; fix any API/version issues.~~ Done 2026-10-25 (section 9).
+2. Keep the client opt-in and unwired until a controlled hardware test is approved. Under the owner's 2026-10-25 decision, every pump session is a short supervised test after which Tandem's app is re-paired.
+3. Replace the blanket pairing refusal with a `pair()` override that logs neither the pairing code nor the J-PAKE derived secret (section 9), then add a dev-only phone test screen (pump MAC, pairing code, connect, show snapshot) for the first supervised session.
+4. Experimental phone bolus behind the `AGENTS.md` gates, with tests for each gate, after read-only status works on the pump.
+5. Verify IOB and basal field semantics against a t:slim X2 and its displayed values; do not equate current-bolus status with historical bolus history.
+6. Add history requests only after current status reads and connection lifecycle are stable.
+7. Obtain explicit owner approval for a live-pump test after official-app coexistence and rollback/recovery risks are assessed.
 
 See [the design document](Tandem_X2_Integration.md) and [the test plan](Tandem_X2_Integration_Test_Plan.md).
 
@@ -94,6 +98,33 @@ This is a deliberate functional limitation, not a passing connection test. The c
 - xDrip-to-watch pump status/bolus reporting is planned, not implemented.
 - No Nightscout server upload is required. The Garmin path uses the Connect IQ phone-message bridge; xDrip's Android Wear Data Layer and Nightscout REST uploader are not Garmin substitutes.
 - Preferred G7 authentication slot is watch `0x03`; if that path cannot be made reliable, app `0x02` is an acceptable final endpoint. When the watch uses `0x02`, xDrip must not simultaneously collect from the G7 in the final configuration. The pump's independent G7 connection must remain undisturbed.
-- Mobile bolus is out of scope. Whether any third-party API supports it is unverified; the current goal is read-only status and history.
+- ~~Mobile bolus is out of scope. Whether any third-party API supports it is unverified; the current goal is read-only status and history.~~ Superseded 2026-10-25: the owner approved an experimental, gated phone-initiated bolus (`AGENTS.md`). PumpX2 implements the t:slim X2 remote-bolus messages (community reverse-engineered, not a Tandem API); behaviour on the owner's pump is unverified.
+- Pump connection ownership (owner, 2026-10-25): Tandem's app stays the daily pump connection; xDrip pairs only in supervised test sessions, then Tandem's app is re-paired. Source: PumpX2 README (one phone app at a time; to verify on the pump).
 
 See [the local data-exchange contract](LOCAL_DATA_EXCHANGE_ARCHITECTURE.md).
+
+## 9. Build and test evidence (2026-10-25)
+
+Claude Code, Windows 11 host, JDK 17.0.20.1, Android SDK 36, Gradle wrapper of this branch. No phone, pump or watch involved.
+
+**Before this change** (`5e84941`): `:app:compileFastDevJavaWithJavac` failed with 15 `cannot find symbol` errors (`BluetoothPeripheral`, `HciStatus`), then `cannot access Timber`. *Cause, observed in the published POMs:* `pumpx2-android:v1.9.3` declares `blessed-android:2.4.0` and `timber:5.0.1` with `runtime` scope, but `TandemX2PumpClient` uses their types in PumpX2's callback signatures.
+
+**Second failure:** `:app:checkFastDevDuplicateClasses` — `pumpx2-messages` brings `bcprov-jdk14:1.77`, which duplicates xDrip/libkeks's `bcprov-jdk15to18:1.68`. Excluding the jdk14 jar alone is not enough: PumpX2 imports `org.bouncycastle.crypto.SavableDigest`, which the 1.68 jar does not contain (checked in the jar), so PumpX2 J-PAKE would fail at runtime.
+
+**Changes:**
+- `app/build.gradle`: explicit `blessed-android:2.4.0` and `timber:5.0.1` (the versions in PumpX2's POM); `bcprov-jdk14` excluded from the PumpX2 artifacts; `bcpkix-jdk15to18` 1.68 → 1.77.
+- `libkeks/build.gradle`: `bcprov`/`bcpkix-jdk15to18` 1.68 → 1.77, the release PumpX2 was built against. The resolved `fastDevRuntimeClasspath` now has only `bcprov`, `bcpkix` and `bcutil-jdk15to18:1.77`.
+- New `libkeks/src/test/java/jamorham/keks/KeksBouncyCastleTest.java`, because libkeks (xDrip's G7 J-PAKE, which the owner's live CGM uses) had no tests: golden P-256 point, zero-knowledge hash and packet encodings recorded on 1.68; a two-party J-PAKE round trip that must agree on the shared key; wrong-password and tampered-proof rejection; PKCS#8/SPKI key decoding; and the DSA challenge response checked with an independent `ECDSASigner`.
+
+**Automated test evidence:**
+
+| Command | BouncyCastle | Result |
+|---|---|---|
+| `:libkeks:testDebugUnitTest` | 1.68 (before upgrade) | 7/7 pass (golden values recorded from this run) |
+| `:libkeks:testDebugUnitTest` | 1.77 | 7/7 pass, golden values unchanged |
+| `:app:testFastDevUnitTest --tests 'com.eveningoutpost.dexdrip.tandem.*'` | 1.77 | `TandemX2StatusMapperTest` 7/7 pass |
+| `:app:assembleFastDev` | 1.77 | `BUILD SUCCESSFUL`, `app-fast-dev.apk` |
+
+**Not tested:** G7 collection on a phone with this build (the unit tests cover libkeks crypto, not the BLE flow), any PumpX2 runtime path, `prodRelease`/CI variants, a physical pump or watch.
+
+**Pairing-code finding (source-derived, PumpX2 `v1.9.3` `TandemPump.pair()`):** besides the pairing code, the 6-digit (J-PAKE) branch also logs the **derived secret** (`PUMP-PAIR(SHORT_6CHAR, CONFIRM, pairingCode=…, derivedSecret=…)`), and that secret is reusable pump authentication material. xDrip's own source has no `Timber` calls or `Timber.plant`, and PumpX2 skips its debug tree when the handler gets a null tree, so these lines probably go nowhere in xDrip today (*inference; not checked at runtime*). `pair()` is public and non-final, and its building blocks (`PumpState`, `JpakeAuthBuilder`, `PumpChallengeRequestBuilder`) are public, so `TandemX2PumpClient` can override it with a version that does not log; that is the planned replacement for the current blanket refusal. `PumpState` keeps the code and derived secret in app-private SharedPreferences, the same protection as xDrip's saved G7 key.

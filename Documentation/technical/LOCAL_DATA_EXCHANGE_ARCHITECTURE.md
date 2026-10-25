@@ -29,6 +29,8 @@ The goal is local pump-data and watch-data exchange. **A Nightscout server uploa
 
 This is the intended topology, not proof that each link is complete. Preserve the pump's direct relationship with the Dexcom G7. The exact ability to maintain pump status/history access alongside Tandem's official phone app, and the pump↔G7 connection, must be evaluated without disrupting therapy or CGM service.
 
+**Pump connection ownership (2026-10-25).** *Source-derived:* PumpX2's README says to force-quit or log out of the official Tandem app to avoid conflicts, and that "after pairing with pumpX2, you will need to log out and re-pair with the official Tandem app", so the X2 appears to serve one phone app at a time (*to verify on the pump*). *Owner decision:* Tandem's app stays the daily pump connection; xDrip pairs only for short, owner-supervised test sessions, then the owner re-pairs Tandem's app. Until this changes, the Tandem → xDrip and xDrip → Garmin pump links are test-session features, not continuous ones, and the watch must treat missing pump data as normal.
+
 ## 2. Required data flows and status
 
 | Link | Desired behavior | Current observed state |
@@ -96,12 +98,12 @@ These names are proposals, not a final wire format. Before implementing either d
 - **Glucose:** the watch reads G7 directly. Reporting a reading back to xDrip is an additional sink, not a reason to replace the watch's own current sensor result with phone data.
 - **Staleness:** unknown is not zero; stale data must remain visibly stale. Include source time and receive time where applicable.
 - **No loops:** returned watch glucose must not be interpreted as a new physical sensor observation and echoed back as a new reading or duplicated in local history.
-- **Read-only pump scope:** no mobile bolus, basal/profile change, suspend/resume or other therapy-changing command in this work. The upstream library's existence of control methods is not permission to use them.
+- **Pump command scope:** no basal/profile change, suspend/resume or other therapy-changing command in this work. The upstream library's existence of control methods is not permission to use them. **Exception (owner decision 2026-10-25):** an experimental phone-initiated bolus, behind the gates listed in `AGENTS.md` (off by default, dev builds only, explicit phone UI with typed amount and confirmation, hard cap, never from the watch or any automatic trigger). *Source-derived:* PumpX2 implements remote bolus for the t:slim X2 (its README: "insulin unit amounts only; carbs / auto-corrections not yet supported"), and ControlX2 uses it from phone and Wear OS. This is the community reverse-engineered protocol, not a Tandem third-party API; live behaviour on the owner's pump/firmware is unverified.
 - **Local first:** no Tandem Source cloud dependency and no Nightscout upload is required. Optional syncing to an independently configured Nightscout server is separate future scope, not a prerequisite.
 
 ## 8. Gates and evidence
 
-1. Compile the pinned PumpX2 dependency and execute synthetic mapper tests.
+1. ~~Compile the pinned PumpX2 dependency and execute synthetic mapper tests.~~ Done 2026-10-25; see [status, section 9](Tandem_X2_Integration_Status.md#9-build-and-test-evidence-2026-10-25).
 2. Continue phone-side read-only protocol work without fresh pairing until the documented pairing-secret logging/storage concern is addressed.
 3. Validate IOB and basal semantics against pump display, and determine history message/event semantics.
 4. Agree the bidirectional phone/watch wire schema before coding both ends.
