@@ -57,6 +57,7 @@ Read this file before changing code, tests, build configuration, or documentatio
 - `app/` is the Android phone app. The current bridge is under `app/src/main/java/com/eveningoutpost/dexdrip/garmin/`.
 - `GarminBridge` supports bridge test messages and transfer of a saved **Dexcom G7** key to the Garmin app. Keep this separate from `tandem/TandemX2PumpClient` and its Tandem status schema.
 - `wear/` is the legacy Android Wear app module; its `wear/src/test/` tests are not the Garmin Connect IQ bridge tests.
+- Android Auto work is exploratory only. Read [the Android Auto integration plan](Documentation/technical/ANDROID_AUTO_INTEGRATION_PLAN.md) first; do not add a `CarAppService`, claim head-unit support, misuse a supported app category, or repurpose `MessagingStyle` for glucose until the documented category/policy gate has a defensible result.
 - The Connect IQ watch implementation is in `miketosh/garmin7-scout`. Treat phone/watch messages as a versioned contract and coordinate changes with its documentation and tests.
 - Keep pump transport, canonical pump data, freshness/validation, local persistence, and Garmin delivery as separate responsibilities. This allows transport experiments to be replaced without changing the watch contract.
 - Do not reuse `InsulinManager`'s model-based insulin-action calculation as evidence of the pump's true reported IOB. Keep modeled and pump-reported quantities distinct.
