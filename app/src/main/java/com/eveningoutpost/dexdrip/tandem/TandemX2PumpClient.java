@@ -113,13 +113,19 @@ public final class TandemX2PumpClient extends TandemPump {
         return pendingPairingPeripheral != null;
     }
 
-    /** Supplies an interactively entered pairing code. This class never stores or logs the code. */
+    /**
+     * Fresh pairing is intentionally disabled in this prototype. PumpX2 v1.9.3's inherited
+     * TandemPump.pair() logs the supplied pairing code and persists it through PumpState. Do not
+     * remove this guard until the upstream secret-logging and persistence behavior has been
+     * reviewed and a safe pairing implementation is in place.
+     */
+    @Deprecated
     public synchronized boolean submitPairingCode(String pairingCode) {
-        if (!started || pendingPairingPeripheral == null
-                || pairingCode == null || pairingCode.trim().isEmpty()) return false;
-        pair(pendingPairingPeripheral, pendingCentralChallenge, pairingCode.trim());
-        notifyState(ConnectionState.AUTHENTICATING, "Pairing/authentication in progress");
-        return true;
+        if (pendingPairingPeripheral != null) {
+            notifyState(ConnectionState.ERROR,
+                    "Fresh pairing is disabled pending pairing-code logging/storage hardening");
+        }
+        return false;
     }
 
     @Override
