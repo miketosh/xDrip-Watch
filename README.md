@@ -36,14 +36,14 @@ Your data is yours and can be exported in many different ways. xDrip also interc
 
 ## xDrip-Watch fork development (experimental)
 
-This fork's `garmin-bridge` branch contains experimental phone-to-Garmin Connect IQ bridge work. It is separate from upstream xDrip support. The planned Tandem t:slim X2 integration is **documentation/design only** at this time; no Tandem pump connection or data extraction is implemented.
+This fork's `garmin-bridge` branch contains experimental phone-to-Garmin Connect IQ bridge work. It is separate from upstream xDrip support. The Tandem t:slim X2 integration now has an **opt-in PumpX2 BLE adapter prototype** and synthetic response-mapper tests, but it is not wired into a UI/Garmin message path and has not been tested against a physical pump.
 
 - [Working agreement for contributors and coding assistants](AGENTS.md)
 - [Tandem t:slim X2 integration design](Documentation/technical/Tandem_X2_Integration.md)
 - [Tandem implementation status](Documentation/technical/Tandem_X2_Integration_Status.md)
 - [Tandem integration test plan](Documentation/technical/Tandem_X2_Integration_Test_Plan.md)
 
-The design is local-first and read-only. It must not send therapy-changing commands or treat modeled insulin estimates as pump-reported values.
+The design is local-first and intended to be read-only at the therapy level. PumpX2 is experimental and not an official Tandem SDK; the wrapper allowlists authentication and selected status requests only. Do not start a live pump session before official-app coexistence/recovery is reviewed. Never treat modeled insulin estimates as pump-reported values.
 
 ## Ethos
 * Developed using Rapid Prototyping methodology

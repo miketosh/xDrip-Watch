@@ -1,6 +1,6 @@
 # Tandem t:slim X2 integration — design and requirements
 
-**Status:** Design in progress. Documentation only; no Tandem transport or data integration is implemented in this repository as of the inspected `garmin-bridge` baseline (`2de12256`, 2026-10-24).
+**Status:** Opt-in adapter prototype added; not yet wired to a UI or validated against a physical pump. Source baseline before implementation: `79096f07` (2026-10-25).
 
 **Target environment:** Tandem t:slim X2 pump, Android phone running the xDrip-Watch fork / xDrip+, and a Garmin Connect IQ companion app maintained in [garmin7-scout](https://github.com/miketosh/garmin7-scout).
 
@@ -22,7 +22,7 @@ Subject to source/API support and validation, the first useful watch status shou
 - Pump/source connectivity state and last successful update time.
 - Clear `unknown`, `stale`, `disconnected`, or `error` states rather than a plausible-looking empty/zero result.
 
-The exact field set is gated by verification against the t:slim X2 protocol/source. Do not promise that a field is available until a local implementation or sanitized fixture proves it.
+The prototype requests Control-IQ and non-Control-IQ IOB, current basal status, and current-bolus status. Synthetic mapper tests exist but have not been run and do not establish that a live pump returns these values. Current-bolus status is not historical last-bolus data. Basal values remain raw and must not be labelled units/hour until verified on device.
 
 ### History
 
@@ -40,22 +40,22 @@ No public, supported Tandem developer API or usable local interface has been est
 
 | Candidate | Role in plan | Main questions / limitations |
 |---|---|---|
-| Direct Android-to-pump Bluetooth | Preferred local-first candidate to investigate | Protocol and fields need to be established. Confirm whether another client can coexist with Tandem's official app, whether authentication changes connection ownership, and how to recover the supported app connection. Do not test against an active pump before this gate is passed. |
+| [PumpX2](https://github.com/jwoglom/pumpX2) community Android library over direct Bluetooth | Selected prototype adapter | Reverse-engineered and experimental; not a Tandem SDK. The library also exposes therapy-changing features, so our wrapper allows authentication messages and a fixed list of current-status requests only. Physical-pump compatibility and official-app coexistence are unverified. |
 | Local interface exposed by Tandem's Android app | Preferred if an explicitly available, supported interface exists | No supported API or intent contract is established here. Do not assume app-private data can be accessed or scrape private files as a design premise. |
 | Tandem Source / cloud history | Optional future fallback or history-only provider; not the initial path | Requires internet and account authentication; upload latency can make it unsuitable for current IOB or current basal status. Undocumented service behavior would need separate review and may break without notice. |
 | xDrip's existing insulin/treatment model | A distinct estimate that may be useful for other display purposes | `InsulinManager` and the insulin profile classes model insulin action. They must not be presented as the pump's own IOB or pump-delivery record. |
 
-**Decision for the initial implementation:** build and test a transport-independent data model and provider boundary first. Investigate local access in the repository and through controlled, read-only protocol research before selecting the concrete provider. Do not add a cloud dependency or live Bluetooth client as part of documentation work.
+**Implementation decision:** use the pinned PumpX2 `v1.9.3` library behind `TandemX2PumpClient`, with a request allowlist and transport-independent `TandemX2PumpSnapshot`. A specific target Bluetooth address is required; the client starts only when explicitly called and is not currently wired to app startup, UI, or GarminBridge. Do not add a cloud dependency.
 
 ## 4. Proposed architecture
 
 Keep these responsibilities separate:
 
 ```text
-Tandem source adapter (not implemented)
+TandemX2PumpClient (opt-in prototype; no UI caller yet)
         |
         v
-Canonical PumpSnapshot + PumpEvent
+TandemX2PumpSnapshot (IOB, basal raw fields, current bolus)
         |
         v
 Validation, source provenance, timestamps, freshness
@@ -121,7 +121,7 @@ The initial implementation must not calculate pump IOB from bolus history as an 
 | Gate | Work | Evidence required to advance |
 |---|---|---|
 | T0 — Documentation and source inventory | Record existing phone/watch architecture, current insulin models, test locations, candidate local sources, and safety boundaries. | Docs agree with checked source; no code claims are implied. |
-| T1 — Local protocol/source feasibility | Determine which read-only source is available locally and the exact fields it exposes. Investigate official-app coexistence and recovery without altering pump therapy. | Source-derived protocol notes or sanitized fixtures; documented uncertainty and a safe hardware-test plan. |
+| T1 — Local protocol/source feasibility | Verify the PumpX2 API/version, read-only request allowlist, authentication flow, official-app coexistence, and recovery. | Source-derived protocol notes, a pinned dependency, synthetic fixtures, and an owner-approved hardware-test plan. |
 | T2 — Canonical model + fake provider | Define snapshot/event types, units, timestamps, provenance, and freshness. | Unit tests for missing values, reported zero, time conversion, duplicates, stale data, and malformed input. No pump required. |
 | T3 — Read-only provider | Implement only verified status/history reads behind the provider boundary. | Test fixtures/regression tests plus explicit no-therapy-command review; hardware test only after owner approval. |
 | T4 — Phone-to-watch snapshot | Add a new message contract and compact current status view. | Sender/receiver contract tests, simulator verification, then physical phone/watch verification. |
@@ -140,4 +140,4 @@ These questions do not block writing the design or implementing a fake provider,
 
 ## 9. Current status
 
-See [Tandem integration status](Tandem_X2_Integration_Status.md) and [test plan](Tandem_X2_Integration_Test_Plan.md). Current state is documentation/design only. The existing Garmin P1/P2 work is a separate G7 bridge; it is not Tandem support.
+See [Tandem integration status](Tandem_X2_Integration_Status.md) and [test plan](Tandem_X2_Integration_Test_Plan.md). Current state is an opt-in PumpX2 adapter prototype plus synthetic response-mapper tests. No test has run against a pump or Garmin watch, and the adapter is not wired to a UI. Existing Garmin P1/P2 work remains a separate G7 bridge.
