@@ -1,8 +1,16 @@
-# Nightscout xDrip
-> Enhanced personal research version of xDrip
+# xDrip-Watch — personal xDrip fork
+> Experimental personal fork of [NightscoutFoundation/xDrip](https://github.com/NightscoutFoundation/xDrip).
+
+**Repository scope:** the default `master` branch is an upstream-derived xDrip baseline. Experimental phone-to-Garmin work is maintained separately on the [`garmin-bridge` branch](https://github.com/miketosh/xDrip-Watch/tree/garmin-bridge); it is not upstream xDrip functionality and has not been validated end-to-end on physical hardware.
+
+- [Garmin bridge and Tandem status](https://github.com/miketosh/xDrip-Watch/blob/garmin-bridge/README.md)
+- [Tandem t:slim X2 design](https://github.com/miketosh/xDrip-Watch/blob/garmin-bridge/Documentation/technical/Tandem_X2_Integration.md)
+- [Tandem vs. Nightscout integration options](https://github.com/miketosh/xDrip-Watch/blob/garmin-bridge/Documentation/technical/Tandem_Nightscout_Integration_Options.md)
+
+The upstream resources and download link below refer to upstream xDrip releases, not APKs built from this fork.
 
  <img align="right" src="Documentation/images/download-xdrip-plus-qr-code.png">
- Info page and APK download: https://jamorham.github.io/#xdrip-plus
+ Upstream xDrip resources and downloads: https://jamorham.github.io/#xdrip-plus
 
 <img align="right" src="https://travis-ci.org/jamorham/xDrip-plus.svg?branch=master"><a align="right" title="Crowdin" target="_blank" href="https://crowdin.com/project/xdrip"><img align="right" src="https://badges.crowdin.net/xdrip/localized.svg"></a>
 
