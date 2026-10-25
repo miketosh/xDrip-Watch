@@ -14,7 +14,7 @@ Read this file before changing code, tests, build configuration, or documentatio
 - Preserve existing xDrip behavior while developing an explicit, versioned phone-to-Garmin data bridge.
 - Planned Tandem support is for the owner's **Tandem t:slim X2** and Android phone. The desired output is read-only pump status and history data for the Garmin watch, with source and freshness information.
 - Prefer a local phone-to-pump data path. Do not add a cloud dependency merely for convenience. Any cloud/Tandem Source path is a separately documented fallback proposal, not the default architecture.
-- Until implementation and evidence exist, describe Tandem support as **planned / not implemented**. Do not imply that xDrip currently reads Tandem X2 data.
+- The current PumpX2-based code is an **opt-in prototype**, not working Tandem support. Until end-to-end evidence exists, describe support as **not yet verified**. Do not imply that xDrip currently reads Tandem X2 data in normal operation.
 - This integration is for display and personal research only. It is not a medical device and must not be presented as a replacement for the pump display, Tandem's supported app, CGM alerts, or clinical advice.
 
 ## Safety invariants for any future pump work
@@ -42,7 +42,7 @@ Read this file before changing code, tests, build configuration, or documentatio
 ## Architecture boundaries
 
 - `app/` is the Android phone app. The current bridge is under `app/src/main/java/com/eveningoutpost/dexdrip/garmin/`.
-- `GarminBridge` currently supports bridge test messages and transfer of a saved **Dexcom G7** key to the Garmin app. Keep this separate from a future Tandem provider and from any Tandem status schema.
+- `GarminBridge` supports bridge test messages and transfer of a saved **Dexcom G7** key to the Garmin app. Keep this separate from `tandem/TandemX2PumpClient` and its Tandem status schema.
 - `wear/` is the legacy Android Wear app module; its `wear/src/test/` tests are not the Garmin Connect IQ bridge tests.
 - The Connect IQ watch implementation is in `miketosh/garmin7-scout`. Treat phone/watch messages as a versioned contract and coordinate changes with its documentation and tests.
 - Keep pump transport, canonical pump data, freshness/validation, local persistence, and Garmin delivery as separate responsibilities. This allows transport experiments to be replaced without changing the watch contract.

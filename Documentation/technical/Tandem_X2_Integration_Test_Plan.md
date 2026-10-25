@@ -1,6 +1,6 @@
 # Tandem t:slim X2 integration — test plan
 
-**Status:** Planned. There is no Tandem implementation or Tandem-specific test suite yet. Do not interpret this plan as evidence that a pump connection has been tested.
+**Status:** Synthetic mapper-test source exists but has not been executed in this environment. The opt-in PumpX2 client has no UI caller and has not been tested against a physical pump.
 
 ## 1. Test principles
 
@@ -26,7 +26,19 @@ Add tests before a live provider exists:
 | Basal meaning | Programmed basal and actual delivery are separate types/fields and cannot be accidentally substituted. |
 | Delivery state | Confirmed, partial, cancelled, interrupted, and unknown states are preserved only when supplied by the source. |
 
-## 3. Provider/adapter tests
+## 3. Synthetic mapper tests added in the prototype
+
+`app/src/test/java/com/eveningoutpost/dexdrip/tandem/TandemX2StatusMapperTest.java` adds synthetic response-object cases for:
+
+- Control-IQ IOB mapping using the algorithm selected by the response.
+- Unknown IOB algorithm remaining unavailable instead of becoming zero.
+- Non-Control-IQ IOB milliunit-to-unit conversion.
+- Basal raw-field preservation without assuming its scale.
+- Current-bolus sentinel and requested-volume mapping.
+
+These tests are source additions only; their execution has not yet been verified.
+
+## 4. Provider/adapter tests
 
 Use a fake local provider with fixed fixture input to verify:
 
@@ -39,7 +51,7 @@ Use a fake local provider with fixed fixture input to verify:
 
 When the actual source is selected, add sanitized, versioned fixtures derived from verified protocol observations. Record the pump model/firmware and the relevant app version in the fixture metadata, but do not commit unique identifiers or credentials.
 
-## 4. Garmin sender/receiver contract tests
+## 5. Garmin sender/receiver contract tests
 
 The phone and watch must agree on a versioned pump-status message before the feature is enabled:
 
@@ -53,15 +65,15 @@ The phone and watch must agree on a versioned pump-status message before the fea
 
 Keep current G7 pairing/authentication fixtures and Tandem fixtures separate.
 
-## 5. Integration gates
+## 6. Integration gates
 
 ### Gate A — no-pump local tests
 
-Pass criteria: all model/parser/provider tests pass with synthetic fixtures; no live network access or Bluetooth device is required.
+Pass criteria: all model/parser/provider tests pass with synthetic fixtures; no live network access or Bluetooth device is required. Verify that non-authentication PumpX2 requests outside the fixed read-only status allowlist are blocked.
 
 ### Gate B — Android phone bridge
 
-Pass criteria: the phone can create a canonical snapshot and send a versioned status message to the watch receiver; sender and receiver logs confirm type/version/status only, without secrets. Test both absent and stale data.
+Pass criteria: after the BLE provider has been separately verified, the phone can create a canonical snapshot and send a versioned status message to the watch receiver; sender and receiver logs confirm type/version/status only, without secrets. Test both absent and stale data. This prototype does not yet implement the Garmin status message.
 
 ### Gate C — simulator/watch display
 
@@ -83,7 +95,7 @@ Record pump model/firmware, Tandem app version, phone Android version, xDrip bui
 
 Pass criteria: multiple read-only sessions show the expected fields and freshness behavior on the actual phone/pump/watch combination; source provenance is confirmed; the official pump app remains recoverable; no therapy commands are sent; logs and docs match the observed behavior.
 
-## 6. Existing test tasks and boundaries
+## 7. Existing test tasks and boundaries
 
 The repository's current CI workflow runs:
 
@@ -107,6 +119,6 @@ Test source locations:
 - `GarminBridgeTestActivity` — manual bridge test screen, not an automated test.
 - `garmin7-scout` — Garmin Connect IQ host/simulator and physical-watch validation.
 
-## 7. Reporting results
+## 8. Reporting results
 
 Every test report must state the source commit/build, command or manual procedure, result, and environment. Clearly label the evidence as unit, integration, emulator, Connect IQ simulator, or physical-device evidence. A test that was not run must be marked not run. A fixture test passing is not evidence that the real Tandem source uses the same fields or semantics.
