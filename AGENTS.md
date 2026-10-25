@@ -30,6 +30,13 @@ Read this file before changing code, tests, build configuration, or documentatio
 - Never let stale pump data look current. If the source disconnects, fails, or stops updating, mark the data stale/unavailable and expose the last-update time.
 - Do not log or commit pump credentials, authentication material, pairing secrets, access tokens, unredacted personal health data, or full live protocol captures. Use synthetic/redacted fixtures. The existing Dexcom G7 shared key sent by `GarminBridge` is sensitive and is **not** Tandem data.
 
+## Agent identity and attribution
+
+- Every coding-agent session must use its **full configured agent/session name** when updating review breadcrumbs, validation status, test/build reports, trackers, and other documentation that records who performed the work. Do not sign as only "Claude Code", "the assistant", or another generic role.
+- Use your own configured name exactly; do not adopt the name of the session working in `garmin7-scout`. The Garmin watch integration session is named **`Claude Code - garmin7-scout-watch-integrator`**.
+- A `Last reviewed` / `Last review` field must name the agent that actually performed the review. Do not change the review time/scope or imply new review work as a cosmetic edit. If a prior review's attribution is missing, correct the label only when the actual reviewer is known.
+- Use the same full identity in status documents and cross-repository handoffs so the owner can tell which session made the change.
+
 ## Documentation accuracy rules
 
 - Separate these labels in shared Markdown:
