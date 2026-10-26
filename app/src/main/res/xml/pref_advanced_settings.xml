@@ -236,11 +236,27 @@
                 <SwitchPreference
                     android:defaultValue="false"
                     android:dependency="garmin_watch_enabled"
-                    android:key="garmin_watch_use_glucose"
-                    android:summary="@string/garmin_watch_use_glucose_summary"
+                    android:key="garmin_watch_collector"
+                    android:summaryOff="@string/garmin_watch_collector_off"
+                    android:summaryOn="@string/garmin_watch_collector_on"
                     android:switchTextOff="@string/short_off_text_for_switches"
                     android:switchTextOn="@string/short_on_text_for_switches"
-                    android:title="@string/garmin_watch_use_glucose" />
+                    android:title="@string/garmin_watch_collector" />
+                <SwitchPreference
+                    android:defaultValue="false"
+                    android:dependency="garmin_watch_collector"
+                    android:key="garmin_watch_fallback"
+                    android:summary="@string/garmin_watch_fallback_summary"
+                    android:switchTextOff="@string/short_off_text_for_switches"
+                    android:switchTextOn="@string/short_on_text_for_switches"
+                    android:title="@string/garmin_watch_fallback" />
+                <EditTextPreference
+                    android:defaultValue="30"
+                    android:dependency="garmin_watch_fallback"
+                    android:digits="0123456789"
+                    android:inputType="number"
+                    android:key="garmin_watch_fallback_minutes"
+                    android:title="@string/garmin_watch_fallback_minutes" />
                 <Preference
                     android:dependency="garmin_watch_enabled"
                     android:key="garmin_watch_send_key"

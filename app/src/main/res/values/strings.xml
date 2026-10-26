@@ -309,8 +309,12 @@
     <string name="pebble_watch_integration">Pebble Watch Integration</string>
     <string name="garmin_watch_integration">Garmin watch (G7 Scout)</string>
     <string name="garmin_watch_enabled_summary">Talk to the G7 Scout Connect IQ app on a Garmin watch through Garmin Connect</string>
-    <string name="garmin_watch_use_glucose">Use glucose from the watch</string>
-    <string name="garmin_watch_use_glucose_summary">Store readings the watch takes directly from the Dexcom G7. Needs a started sensor; set the data source to Disabled so the phone does not connect at the same time</string>
+    <string name="garmin_watch_collector">Garmin watch is the G7 collector</string>
+    <string name="garmin_watch_collector_on">The watch connects to the G7 and its readings are stored; this phone\'s G7 collector stays off. The watch menu (Collector) can switch back</string>
+    <string name="garmin_watch_collector_off">This phone connects to the G7. Turn on to let the watch collect instead (keep the data source on Dexcom G7)</string>
+    <string name="garmin_watch_fallback">Back to phone after missed readings</string>
+    <string name="garmin_watch_fallback_summary">While the watch collects: make this phone the collector again when no reading arrives for the time below</string>
+    <string name="garmin_watch_fallback_minutes">Minutes without a reading</string>
     <string name="garmin_watch_send_key">Send G7 key to watch</string>
     <string name="garmin_watch_send_key_summary">Lets the watch log in to the sensor with this phone\'s pairing. Open the G7 Scout app on the watch first</string>
     <string name="garmin_watch_send_key_confirm">Send the saved G7 pairing key to the G7 Scout app on your Garmin watch? Anyone holding this key can read the sensor.</string>
