@@ -123,10 +123,11 @@ public class GarminBridge {
         }
     }
 
-    /** Tells the watch which side connects to the G7 ({@code collector} v1). */
+    /** Tells the watch which side connects to the G7 ({@code collector} v1) and its slot ({@code slot} v1). */
     public static void sendCollector(Context context, StatusListener listener) {
-        send(context, GarminWatchMessages.collectorMessage(GarminWatchPreferences.isWatchCollector(),
+        send(context, GarminWatchMessages.collectorMessage(GarminWatchPreferences.collectorMode(),
                 GarminWatchPreferences.collectorChangedAtSeconds()), listener);
+        send(context, GarminWatchMessages.slotMessage(GarminWatchPreferences.slotChoice()), listener);
     }
 
     /** Initializes the SDK if needed, then sends the message to every known watch. */
@@ -274,8 +275,9 @@ public class GarminBridge {
         }
         // This phone's choice, also when never changed (time 0): a fresh watch starts as the
         // collector and must learn that the phone collects (2026-10-26).
-        sendToKnownDevices(GarminWatchMessages.collectorMessage(GarminWatchPreferences.isWatchCollector(),
+        sendToKnownDevices(GarminWatchMessages.collectorMessage(GarminWatchPreferences.collectorMode(),
                 GarminWatchPreferences.collectorChangedAtSeconds()), listener);
+        sendToKnownDevices(GarminWatchMessages.slotMessage(GarminWatchPreferences.slotChoice()), listener);
     }
 
     /** Contract 6.3: store a reading only if the watch marked it reliable, in range, dated sensibly and new. */
@@ -322,8 +324,8 @@ public class GarminBridge {
         }
         if (!GarminWatchPreferences.isEnabled()) return;
         if (!GarminWatchMessages.replacesPhoneChoice(c, GarminWatchPreferences.collectorChangedAtSeconds())) {
-            if (c.watch != GarminWatchPreferences.isWatchCollector()) {
-                sendToKnownDevices(GarminWatchMessages.collectorMessage(GarminWatchPreferences.isWatchCollector(),
+            if (!c.mode.equals(GarminWatchPreferences.collectorMode())) {
+                sendToKnownDevices(GarminWatchMessages.collectorMessage(GarminWatchPreferences.collectorMode(),
                         GarminWatchPreferences.collectorChangedAtSeconds()), listener);
             }
             return;

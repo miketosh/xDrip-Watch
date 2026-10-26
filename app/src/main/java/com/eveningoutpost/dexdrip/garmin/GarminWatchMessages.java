@@ -22,36 +22,48 @@ public final class GarminWatchMessages {
     public static final String PUMP_STATUS = "pump_status";
     public static final String GLUCOSE = "glucose";
     public static final String COLLECTOR = "collector";
+    public static final String SLOT = "slot";
     public static final int VERSION = 1;
 
-    /** Which side connects to the G7, and when that was chosen (epoch seconds). */
+    /** Which side connects to the G7 ("watch", "phone" or "both"), and when that was chosen (epoch seconds). */
     public static final class Collector {
+        public final String mode;
         public final boolean watch;
         public final long changedAtSeconds;
 
-        Collector(boolean watch, long changedAtSeconds) {
-            this.watch = watch;
+        Collector(String mode, long changedAtSeconds) {
+            this.mode = mode;
+            this.watch = !"phone".equals(mode);
             this.changedAtSeconds = changedAtSeconds;
         }
     }
 
-    /** Both directions: {@code {t: "collector", v: 1, c: "watch"|"phone", ts}}; null if malformed. */
+    /** Both directions: {@code {t: "collector", v: 1, c: "watch"|"phone"|"both", ts}}; null if malformed. */
     @Nullable
     public static Collector parseCollector(@Nullable Map<?, ?> m) {
         if (m == null || !COLLECTOR.equals(m.get("t"))) return null;
         if (!Integer.valueOf(VERSION).equals(asInt(m.get("v")))) return null;
         final Object c = m.get("c");
         final Integer ts = asInt(m.get("ts"));
-        if (ts == null || ts < 0 || !("watch".equals(c) || "phone".equals(c))) return null;
-        return new Collector("watch".equals(c), ts);
+        if (ts == null || ts < 0 || !("watch".equals(c) || "phone".equals(c) || "both".equals(c))) return null;
+        return new Collector((String) c, ts);
     }
 
-    public static Map<String, Object> collectorMessage(boolean watch, long changedAtSeconds) {
+    public static Map<String, Object> collectorMessage(String mode, long changedAtSeconds) {
         final Map<String, Object> m = new HashMap<>();
         m.put("t", COLLECTOR);
         m.put("v", VERSION);
-        m.put("c", watch ? "watch" : "phone");
+        m.put("c", mode);
         m.put("ts", (int) changedAtSeconds);
+        return m;
+    }
+
+    /** Phone → watch: the watch's G7 slot, {@code {t: "slot", v: 1, s: "auto"|"02"|"03"}}. */
+    public static Map<String, Object> slotMessage(String choice) {
+        final Map<String, Object> m = new HashMap<>();
+        m.put("t", SLOT);
+        m.put("v", VERSION);
+        m.put("s", "02".equals(choice) || "03".equals(choice) ? choice : "auto");
         return m;
     }
 

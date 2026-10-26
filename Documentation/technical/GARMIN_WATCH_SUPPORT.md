@@ -17,6 +17,8 @@ Settings → Smart Watch Features → **Garmin watch (G7 Scout)**:
 |---|---|---|
 | `garmin_watch_enabled` | off | Talk to the watch app; starts listening at app start and when switched on |
 | `garmin_watch_collector` | off | The watch is the G7 collector: this phone's G7 collector (`Ob1G5CollectionService`) stays off and readings from the watch are stored (needs a started sensor). Keep the data source on Dexcom G7. Like Wear OS's "Force Wear Collection Service" |
+| `garmin_watch_slot` | auto | The watch's G7 slot: Auto (the watch tries 03 and uses 02 after the sensor refuses 03, retrying 03 after 24 h), or forced 02 / 03. Sent to the watch as `{t: "slot", v: 1, s}` |
+| `garmin_watch_dual_collector` | off | Only with the slot set to 03: the watch collects on 03 while this phone keeps collecting on 02 (collector mode `both`); the phone keeps its own readings and ignores the watch's. Changing the slot away from 03 turns it off |
 | `garmin_watch_fallback` | off | While the watch collects, make the phone the collector again after `garmin_watch_fallback_minutes` (default 30, at least 10) without a reading; checked with xDrip's missed-reading checks |
 | `garmin_watch_send_key` | action | Sends the saved G7 key after a confirmation |
 | `garmin_watch_diagnostics` | screen | `GarminBridgeTestActivity`: ping, key send, listener status |

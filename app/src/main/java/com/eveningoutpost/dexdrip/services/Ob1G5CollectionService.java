@@ -845,7 +845,7 @@ public class Ob1G5CollectionService extends G5BaseService {
                 return false;
             }
 
-            if (com.eveningoutpost.dexdrip.garmin.GarminWatchPreferences.isWatchCollector()) {
+            if (com.eveningoutpost.dexdrip.garmin.GarminWatchPreferences.isPhoneCollectorOff()) {
                 if (JoH.quietratelimit("garmin-collector-notice", 3))
                     UserError.Log.d(TAG, "Not running: the Garmin watch is the G7 collector");
                 return false;
