@@ -2,6 +2,7 @@ package com.eveningoutpost.dexdrip.garmin;
 
 import androidx.annotation.Nullable;
 
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
@@ -16,7 +17,44 @@ public final class GarminWatchMessages {
     private GarminWatchMessages() {}
 
     public static final String GLUCOSE = "glucose";
+    public static final String COLLECTOR = "collector";
     public static final int VERSION = 1;
+
+    /** Which side connects to the G7, and when that was chosen (epoch seconds). */
+    public static final class Collector {
+        public final boolean watch;
+        public final long changedAtSeconds;
+
+        Collector(boolean watch, long changedAtSeconds) {
+            this.watch = watch;
+            this.changedAtSeconds = changedAtSeconds;
+        }
+    }
+
+    /** Both directions: {@code {t: "collector", v: 1, c: "watch"|"phone", ts}}; null if malformed. */
+    @Nullable
+    public static Collector parseCollector(@Nullable Map<?, ?> m) {
+        if (m == null || !COLLECTOR.equals(m.get("t"))) return null;
+        if (!Integer.valueOf(VERSION).equals(asInt(m.get("v")))) return null;
+        final Object c = m.get("c");
+        final Integer ts = asInt(m.get("ts"));
+        if (ts == null || ts < 0 || !("watch".equals(c) || "phone".equals(c))) return null;
+        return new Collector("watch".equals(c), ts);
+    }
+
+    public static Map<String, Object> collectorMessage(boolean watch, long changedAtSeconds) {
+        final Map<String, Object> m = new HashMap<>();
+        m.put("t", COLLECTOR);
+        m.put("v", VERSION);
+        m.put("c", watch ? "watch" : "phone");
+        m.put("ts", (int) changedAtSeconds);
+        return m;
+    }
+
+    /** The newer choice wins; on a tie the phone keeps its own (the watch then takes the phone's). */
+    public static boolean replacesPhoneChoice(Collector fromWatch, long phoneChangedAtSeconds) {
+        return fromWatch.changedAtSeconds > phoneChangedAtSeconds;
+    }
 
     /** A watch → phone reading after validation; see {@link #parseGlucose}. */
     public static final class Glucose {

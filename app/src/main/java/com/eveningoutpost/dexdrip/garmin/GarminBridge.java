@@ -91,6 +91,12 @@ public class GarminBridge {
         }
     }
 
+    /** Tells the watch which side connects to the G7 ({@code collector} v1). */
+    public static void sendCollector(Context context, StatusListener listener) {
+        send(context, GarminWatchMessages.collectorMessage(GarminWatchPreferences.isWatchCollector(),
+                GarminWatchPreferences.collectorChangedAtSeconds()), listener);
+    }
+
     /** Initializes the SDK if needed, then sends the message to every known watch. */
     private static void send(Context context, Map<String, Object> message, StatusListener listener) {
         withSdk(context, listener, () -> sendToKnownDevices(message, listener));
@@ -234,6 +240,11 @@ public class GarminBridge {
                 report(listener, "registerForAppEvents failed: " + e);
             }
         }
+        // A choice made here while the watch was away reaches it now.
+        if (GarminWatchPreferences.collectorChangedAtSeconds() > 0) {
+            sendToKnownDevices(GarminWatchMessages.collectorMessage(GarminWatchPreferences.isWatchCollector(),
+                    GarminWatchPreferences.collectorChangedAtSeconds()), listener);
+        }
     }
 
     /** Contract 6.3: store a reading only if the watch marked it reliable, in range, dated sensibly and new. */
@@ -244,6 +255,10 @@ public class GarminBridge {
         }
         for (final Object m : messages) {
             if (!(m instanceof Map)) continue;
+            if (GarminWatchMessages.COLLECTOR.equals(((Map<?, ?>) m).get("t"))) {
+                onWatchCollector((Map<?, ?>) m, listener);
+                continue;
+            }
             if (!GarminWatchMessages.GLUCOSE.equals(((Map<?, ?>) m).get("t"))) continue;
             final GarminWatchMessages.Parsed parsed = GarminWatchMessages.parseGlucose((Map<?, ?>) m, JoH.tsl());
             final GarminWatchMessages.Glucose g = parsed.glucose;
@@ -253,7 +268,7 @@ public class GarminBridge {
                 continue;
             }
             if (!GarminWatchPreferences.useWatchGlucose()) {
-                lastWatchGlucose = "not used (setting off) seq " + g.sequence + " " + JoH.hourMinuteString();
+                lastWatchGlucose = "not used (phone is the collector) seq " + g.sequence + " " + JoH.hourMinuteString();
                 continue;
             }
             if (!watchGlucoseSeen.isNew(g)) continue;
@@ -265,6 +280,26 @@ public class GarminBridge {
                         + (bgr != null ? ": stored" : ": not stored, start a sensor in xDrip first"));
             });
         }
+    }
+
+    /** The watch's menu chose a collector: take it if newer, otherwise send ours back. */
+    private static void onWatchCollector(Map<?, ?> m, StatusListener listener) {
+        final GarminWatchMessages.Collector c = GarminWatchMessages.parseCollector(m);
+        if (c == null) {
+            report(listener, "Watch collector message rejected");
+            return;
+        }
+        if (!GarminWatchPreferences.isEnabled()) return;
+        if (!GarminWatchMessages.replacesPhoneChoice(c, GarminWatchPreferences.collectorChangedAtSeconds())) {
+            if (c.watch != GarminWatchPreferences.isWatchCollector()) {
+                sendToKnownDevices(GarminWatchMessages.collectorMessage(GarminWatchPreferences.isWatchCollector(),
+                        GarminWatchPreferences.collectorChangedAtSeconds()), listener);
+            }
+            return;
+        }
+        GarminWatchPreferences.setWatchCollector(c.watch, c.changedAtSeconds, "set on the watch");
+        GarminWatchPreferences.notifyCollector(c.watch, "set on the watch");
+        report(listener, "Watch set the G7 collector to " + (c.watch ? "the watch" : "the phone"));
     }
 
     private static void report(StatusListener listener, String line) {

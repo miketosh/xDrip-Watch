@@ -123,6 +123,8 @@ public class MissedReadingService extends IntentService {
             }
 
 
+            com.eveningoutpost.dexdrip.garmin.GarminWatchPreferences.checkFallback();
+
             if ((Home.get_forced_wear()) && Pref.getBoolean("disable_wearG5_on_missedreadings", false)) {
                 int bg_wear_missed_minutes = Pref.getStringToInt("disable_wearG5_on_missedreadings_level", 30);
                 if (BgReading.getTimeSinceLastReading() >= (bg_wear_missed_minutes * 1000 * 60)) {

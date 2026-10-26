@@ -121,4 +121,38 @@ public class GarminWatchMessagesTest {
         assertTrue(d.isNew(GarminWatchMessages.parseGlucose(m3, NOW_MS).glucose));
         assertTrue(d.isNew(a)); // forgotten: capacity 2
     }
+
+    // --- collector (both directions) ---
+
+    @Test
+    public void collectorRoundTrips() {
+        final GarminWatchMessages.Collector c = GarminWatchMessages.parseCollector(
+                GarminWatchMessages.collectorMessage(true, NOW_S));
+        assertNotNull(c);
+        assertTrue(c.watch);
+        assertEquals(NOW_S, c.changedAtSeconds);
+        assertFalse(GarminWatchMessages.parseCollector(GarminWatchMessages.collectorMessage(false, 0)).watch);
+    }
+
+    @Test
+    public void malformedCollectorIsRejected() {
+        final Map<String, Object> m = GarminWatchMessages.collectorMessage(true, NOW_S);
+        m.put("c", "both");
+        assertNull(GarminWatchMessages.parseCollector(m));
+        final Map<String, Object> v2 = GarminWatchMessages.collectorMessage(true, NOW_S);
+        v2.put("v", 2);
+        assertNull(GarminWatchMessages.parseCollector(v2));
+        final Map<String, Object> noTime = GarminWatchMessages.collectorMessage(true, NOW_S);
+        noTime.remove("ts");
+        assertNull(GarminWatchMessages.parseCollector(noTime));
+    }
+
+    @Test
+    public void newerCollectorChoiceWinsAndPhoneKeepsTies() {
+        final GarminWatchMessages.Collector c = GarminWatchMessages.parseCollector(
+                GarminWatchMessages.collectorMessage(true, NOW_S));
+        assertTrue(GarminWatchMessages.replacesPhoneChoice(c, NOW_S - 1));
+        assertFalse(GarminWatchMessages.replacesPhoneChoice(c, NOW_S));
+        assertFalse(GarminWatchMessages.replacesPhoneChoice(c, NOW_S + 60));
+    }
 }

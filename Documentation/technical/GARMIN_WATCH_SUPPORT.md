@@ -34,9 +34,14 @@ Settings → Smart Watch Features → **Garmin watch (G7 Scout)**:
 | Key | Default | Meaning |
 |---|---|---|
 | `garmin_watch_enabled` | off | Talk to the watch app; starts listening at app start and when switched on |
-| `garmin_watch_use_glucose` | off | Store readings from the watch (needs a started sensor; set the data source to Disabled so the phone does not connect to the sensor at the same time) |
+| `garmin_watch_collector` | off | The watch is the G7 collector: this phone's G7 collector (`Ob1G5CollectionService`) stays off and readings from the watch are stored (needs a started sensor). Keep the data source on Dexcom G7. Like Wear OS's "Force Wear Collection Service" |
+| `garmin_watch_fallback` | off | While the watch collects, make the phone the collector again after `garmin_watch_fallback_minutes` (default 30, at least 10) without a reading; checked with xDrip's missed-reading checks |
 | `garmin_watch_send_key` | action | Sends the saved G7 key after a confirmation |
 | `garmin_watch_diagnostics` | screen | `GarminBridgeTestActivity`: ping, key send, listener status |
+
+## Who collects
+
+Only one client may use the sensor's app slot, so exactly one side connects to the G7. The switch above and the watch app's menu item **Collector** (Watch / Phone) both set it, and each sends `{t: "collector", v: 1, c: "watch"|"phone", ts}` (epoch seconds of the change) to the other. The newer change wins; on a tie the phone's stands. xDrip sends its choice when it starts listening (if it was ever set) and answers an older watch message with its own; the watch retries an undelivered change at app start and after each reading it sends. A change made on the watch shows a notification on the phone.
 
 ## Files
 
@@ -48,7 +53,7 @@ Settings → Smart Watch Features → **Garmin watch (G7 Scout)**:
 | `garmin/GarminBridgeTestActivity.java` | Diagnostics screen |
 | `res/xml/pref_advanced_settings.xml`, `res/values/strings.xml` | The settings screen |
 
-Core hooks: one line in `utils/Preferences.java` (`GarminWatchPreferences.attach(this)`), a guarded start in `xdrip.onCreate`, `Ob1G5CollectionService.getKeksKeyForBridge()`, the diagnostics activity in the manifest, and the Connect IQ SDK dependency in `app/build.gradle`. Based on xDrip `805ba04` (2026-03-01, Android Gradle Plugin 7.4.2), which needs Connect IQ SDK 2.2.0 (2.3.0 and 2.4.0 fail in its D8); on current upstream (Gradle 8) 2.4.0 works. Nothing else changed.
+Core hooks: one line in `utils/Preferences.java` (`GarminWatchPreferences.attach(this)`), a guarded start in `xdrip.onCreate`, `Ob1G5CollectionService.getKeksKeyForBridge()`/`getKeksKeyMacForBridge()` and its `shouldServiceRun()` check, `GarminWatchPreferences.checkFallback()` in `MissedReadingService`, the diagnostics activity in the manifest, and the Connect IQ SDK dependency in `app/build.gradle`. Based on xDrip `805ba04` (2026-03-01, Android Gradle Plugin 7.4.2), which needs Connect IQ SDK 2.2.0 (2.3.0 and 2.4.0 fail in its D8); on current upstream (Gradle 8) 2.4.0 works. Nothing else changed.
 
 ## Status
 
