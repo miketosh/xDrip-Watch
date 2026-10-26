@@ -21,6 +21,10 @@ Settings → Smart Watch Features → **Garmin watch (G7 Scout)**:
 | `garmin_watch_send_key` | action | Sends the saved G7 key after a confirmation |
 | `garmin_watch_diagnostics` | screen | `GarminBridgeTestActivity`: ping, key send, listener status |
 
+## Key handoff
+
+"Send G7 key" sends `{t: "key", v: 1, tx, key: 32 hex, name}` after a confirmation. `name` is Android's name for the bonded sensor whose key it is (`BluetoothAdapter.getRemoteDevice(mac).getName()`, e.g. `DXCMz8`), left out if unknown; the watch then connects only to that name, since one G7 advertises under two names and the watch cannot see addresses. The message on screen shows `#XXXX`, the first 2 bytes of SHA-256(key), which the watch's Status screen shows too.
+
 ## Who collects
 
 Only one client may use the sensor's app slot, so exactly one side connects to the G7. The switch above and the watch app's menu item **Collector** (Watch / Phone) both set it, and each sends `{t: "collector", v: 1, c: "watch"|"phone", ts}` (epoch seconds of the change) to the other. The newer change wins; on a tie the phone's stands. xDrip sends its choice when it starts listening (if it was ever set) and answers an older watch message with its own; the watch retries an undelivered change at app start and after each reading it sends. A change made on the watch shows a notification on the phone.

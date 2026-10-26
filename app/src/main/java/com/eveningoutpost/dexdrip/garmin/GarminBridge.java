@@ -1,5 +1,6 @@
 package com.eveningoutpost.dexdrip.garmin;
 
+import android.bluetooth.BluetoothAdapter;
 import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
@@ -77,8 +78,13 @@ public class GarminBridge {
         message.put("v", 1);
         message.put("tx", Ob1G5CollectionService.getTransmitterID());
         message.put("key", JoH.bytesToHex(key));
-        report(listener, "Sending saved G7 key #" + keyPrint(key) + " (sensor " + Ob1G5CollectionService.getKeksKeyMacForBridge()
-                + ") for transmitter " + Ob1G5CollectionService.getTransmitterID());
+        // The sensor name the key belongs to: the watch then connects only to it (it cannot
+        // see Bluetooth addresses). Left out if Android does not know the name.
+        final String mac = Ob1G5CollectionService.getKeksKeyMacForBridge();
+        final String name = sensorName(mac);
+        if (name != null) message.put("name", name);
+        report(listener, "Sending saved G7 key #" + keyPrint(key) + " for sensor " + (name != null ? name : "(name unknown)")
+                + " " + mac + ", transmitter " + Ob1G5CollectionService.getTransmitterID());
         send(context, message, listener);
     }
 
@@ -90,6 +96,18 @@ public class GarminBridge {
         if (!GarminWatchMessages.PUMP_STATUS.equals(message.get("t"))) return;
         report(listener, "Sending pump_status (" + message.size() + " fields)");
         send(context, message, listener);
+    }
+
+    /** Android's name for the bonded sensor at this address (e.g. DXCMz8), or null. */
+    static String sensorName(String mac) {
+        try {
+            final BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+            if (adapter == null || mac == null) return null;
+            final String name = adapter.getRemoteDevice(mac).getName();
+            return name != null && name.startsWith("DXCM") && name.length() <= 8 ? name : null;
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     /**
