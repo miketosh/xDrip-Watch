@@ -2,7 +2,6 @@ package com.eveningoutpost.dexdrip.garmin;
 
 import android.content.Context;
 
-import com.eveningoutpost.dexdrip.BuildConfig;
 import com.eveningoutpost.dexdrip.models.BgReading;
 import com.eveningoutpost.dexdrip.models.JoH;
 import com.eveningoutpost.dexdrip.models.UserError;
@@ -47,9 +46,12 @@ public class GarminBridge {
     /** Bridge test screen: the last watch message outcome. Never holds a glucose value. */
     public static volatile String lastWatchGlucose = "none yet";
 
-    /** Dev builds (next to the official xDrip) take glucose from the watch's direct G7 collector. */
+    /**
+     * Every fork build takes glucose from the watch's direct G7 collector: the fork replaces the
+     * official xDrip (owner, 2026-10-25). A reading is stored only if the watch marked it reliable.
+     */
     public static boolean watchGlucoseEnabled() {
-        return BuildConfig.APPLICATION_ID.endsWith(".garminbridge");
+        return true;
     }
 
     /** Sends one test message to every known watch. */
