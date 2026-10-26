@@ -53,7 +53,13 @@ public final class GarminWatchPreferences {
                             .setTitle(R.string.garmin_watch_send_key)
                             .setMessage(R.string.garmin_watch_send_key_confirm)
                             .setPositiveButton(R.string.garmin_watch_send, (dialog, which) ->
-                                    GarminBridge.sendKey(preference.getContext(), line -> UserError.Log.d(TAG, line)))
+                                    // The outcome on screen: a silent failure looked like success.
+                                    GarminBridge.sendKey(preference.getContext(), line -> {
+                                        if (!line.startsWith("Skipping") && !line.startsWith("Initializing")
+                                                && !line.startsWith("SDK ready")) {
+                                            JoH.static_toast_long(line);
+                                        }
+                                    }))
                             .setNegativeButton(R.string.cancel, null)
                             .show();
                     return true;

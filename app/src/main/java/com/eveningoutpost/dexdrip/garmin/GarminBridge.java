@@ -77,7 +77,8 @@ public class GarminBridge {
         message.put("v", 1);
         message.put("tx", Ob1G5CollectionService.getTransmitterID());
         message.put("key", JoH.bytesToHex(key));
-        report(listener, "Sending saved G7 key (16 bytes) for transmitter " + Ob1G5CollectionService.getTransmitterID());
+        report(listener, "Sending saved G7 key #" + keyPrint(key) + " (sensor " + Ob1G5CollectionService.getKeksKeyMacForBridge()
+                + ") for transmitter " + Ob1G5CollectionService.getTransmitterID());
         send(context, message, listener);
     }
 
@@ -89,6 +90,19 @@ public class GarminBridge {
         if (!GarminWatchMessages.PUMP_STATUS.equals(message.get("t"))) return;
         report(listener, "Sending pump_status (" + message.size() + " fields)");
         send(context, message, listener);
+    }
+
+    /**
+     * First 2 bytes of SHA-256(key) in hex, as the watch's Status screen shows on its
+     * "Saved key" line: tells whether both hold the same key without showing it.
+     */
+    static String keyPrint(byte[] key) {
+        try {
+            final byte[] digest = java.security.MessageDigest.getInstance("SHA-256").digest(key);
+            return String.format("%02X%02X", digest[0] & 0xFF, digest[1] & 0xFF);
+        } catch (Exception e) {
+            return "?";
+        }
     }
 
     /** Initializes the SDK if needed, then sends the message to every known watch. */
@@ -165,20 +179,50 @@ public class GarminBridge {
             return;
         }
         final IQApp watchApp = new IQApp(WATCH_APP_ID);
+        int connected = 0;
         for (final IQDevice device : devices) {
-            String status;
+            IQDevice.IQDeviceStatus status = null;
             try {
-                status = String.valueOf(connectIQ.getDeviceStatus(device));
+                status = connectIQ.getDeviceStatus(device);
             } catch (Exception e) {
-                status = "unknown (" + e + ")";
+                report(listener, "Device " + device.getFriendlyName() + " status unknown: " + e);
             }
-            report(listener, "Device " + device.getFriendlyName() + " status=" + status);
-            try {
-                connectIQ.sendMessage(device, watchApp, message, (d, a, messageStatus) ->
-                        report(listener, "Send " + message.get("t") + " to " + d.getFriendlyName() + ": " + messageStatus));
-            } catch (Exception e) {
-                report(listener, "sendMessage failed: " + e);
+            if (status != IQDevice.IQDeviceStatus.CONNECTED) {
+                report(listener, "Skipping " + device.getFriendlyName() + " (" + status + ")");
+                continue;
             }
+            connected++;
+            sendWithRetry(device, watchApp, message, listener, 1);
+        }
+        if (connected == 0) {
+            report(listener, "No Garmin watch connected to Garmin Connect");
+        }
+    }
+
+    private static final int SEND_ATTEMPTS = 3;
+    private static final long SEND_RETRY_MS = 2000;
+
+    /**
+     * The first message after the SDK starts often fails with FAILURE_DURING_TRANSFER and the
+     * same message a moment later succeeds (owner's phone, 2026-10-26): retry a few times.
+     */
+    private static void sendWithRetry(IQDevice device, IQApp watchApp, Map<String, Object> message,
+                                      StatusListener listener, int attempt) {
+        try {
+            connectIQ.sendMessage(device, watchApp, message, (d, a, messageStatus) -> {
+                if (messageStatus == ConnectIQ.IQMessageStatus.SUCCESS) {
+                    report(listener, "Sent " + message.get("t") + " to " + d.getFriendlyName());
+                } else if (attempt < SEND_ATTEMPTS) {
+                    report(listener, "Send " + message.get("t") + " try " + attempt + ": " + messageStatus + ", retrying");
+                    new Handler(Looper.getMainLooper()).postDelayed(() ->
+                            sendWithRetry(device, watchApp, message, listener, attempt + 1), SEND_RETRY_MS);
+                } else {
+                    report(listener, "Send " + message.get("t") + " failed after " + attempt + " tries: " + messageStatus
+                            + " (is the G7 Scout app open on the watch?)");
+                }
+            });
+        } catch (Exception e) {
+            report(listener, "sendMessage failed: " + e);
         }
     }
 

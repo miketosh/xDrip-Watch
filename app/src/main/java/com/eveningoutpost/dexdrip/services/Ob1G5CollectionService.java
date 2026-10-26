@@ -1011,6 +1011,11 @@ public class Ob1G5CollectionService extends G5BaseService {
         return key != null && key.length == 16 ? key : null;
     }
 
+    // Garmin watch support: the sensor MAC the saved key belongs to.
+    public static String getKeksKeyMacForBridge() {
+        return transmitterMAC;
+    }
+
     public static String getTransmitterID() {
         if (transmitterID == null) {
             init_tx_id();
