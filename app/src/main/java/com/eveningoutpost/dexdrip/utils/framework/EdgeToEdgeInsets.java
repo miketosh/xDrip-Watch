@@ -2,6 +2,7 @@ package com.eveningoutpost.dexdrip.utils.framework;
 
 import android.app.Activity;
 import android.app.Application;
+import android.app.Dialog;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
@@ -28,7 +29,21 @@ public final class EdgeToEdgeInsets implements Application.ActivityLifecycleCall
 
     @Override
     public void onActivityPostCreated(Activity activity, Bundle savedInstanceState) {
-        final View decor = activity.getWindow().getDecorView();
+        padRoot(activity.getWindow().getDecorView());
+    }
+
+    /**
+     * A nested PreferenceScreen opens as a Dialog, which the activity callbacks never see: its
+     * toolbar covered the first rows (the Garmin watch switch could not be tapped, 2026-10-26).
+     */
+    public static void padDialog(Dialog dialog) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.VANILLA_ICE_CREAM || dialog == null || dialog.getWindow() == null) {
+            return;
+        }
+        padRoot(dialog.getWindow().getDecorView());
+    }
+
+    private static void padRoot(View decor) {
         if (!(decor instanceof ViewGroup) || ((ViewGroup) decor).getChildCount() == 0) {
             return;
         }

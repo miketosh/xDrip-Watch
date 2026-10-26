@@ -1093,6 +1093,16 @@ public class Preferences extends BasePreferenceActivity implements SearchPrefere
     @RequiredArgsConstructor
     public static class AllPrefsFragment extends PreferenceFragment {
 
+        // xDrip-Watch: nested screens are Dialogs; pad them like activities (edge to edge).
+        @Override
+        public boolean onPreferenceTreeClick(PreferenceScreen preferenceScreen, Preference preference) {
+            final boolean handled = super.onPreferenceTreeClick(preferenceScreen, preference);
+            if (preference instanceof PreferenceScreen) {
+                com.eveningoutpost.dexdrip.utils.framework.EdgeToEdgeInsets.padDialog(((PreferenceScreen) preference).getDialog());
+            }
+            return handled;
+        }
+
         final String jumpTo;
 
         @Setter
