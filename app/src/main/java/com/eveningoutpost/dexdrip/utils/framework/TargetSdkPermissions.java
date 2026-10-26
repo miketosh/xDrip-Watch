@@ -64,6 +64,12 @@ public final class TargetSdkPermissions {
         }
     }
 
+    /** For a feature that needs shared storage now (settings restore): ask even if asked this run. */
+    public static void requestAllFilesAccessNow(final Activity activity) {
+        filesAskedThisRun = false;
+        requestAllFilesAccess(activity);
+    }
+
     // Asked after the runtime permissions so the two prompts do not overlap.
     private static void requestAllFilesAccess(final Activity activity) {
         if (filesAskedThisRun || Build.VERSION.SDK_INT < Build.VERSION_CODES.R || StorageAccess.hasAllFilesAccess()) {

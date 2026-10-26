@@ -93,7 +93,11 @@ public class SdcardImportExport extends BaseAppCompatActivity {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             if (com.eveningoutpost.dexdrip.utils.framework.StorageAccess.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE)
                     != PackageManager.PERMISSION_GRANTED) {
-                if (ask) {
+                // xDrip-Watch: at target 30+ Android refuses the storage permission without a
+                // dialog; only "All files access" works, so ask for that instead.
+                if (ask && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    com.eveningoutpost.dexdrip.utils.framework.TargetSdkPermissions.requestAllFilesAccessNow(context);
+                } else if (ask) {
                     ActivityCompat.requestPermissions(context,
                             new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
                             request_code);
@@ -272,9 +276,9 @@ public class SdcardImportExport extends BaseAppCompatActivity {
                 if (checkPermissions(activity, true, TRIGGER_RESTORE_PERMISSIONS_REQUEST_STORAGE)) {
                     // one entry do it!
                     restoreSettingsNow(activity);
-                } else {
-                    handleBackup(activity); // try try again
                 }
+                // xDrip-Watch: no immediate retry; at target 30+ that looped forever while the
+                // permission screen was open. The prompt returns on the next start.
                 dialog.dismiss();
             });
 

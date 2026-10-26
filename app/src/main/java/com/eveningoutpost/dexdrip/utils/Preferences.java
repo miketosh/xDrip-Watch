@@ -1180,6 +1180,8 @@ public class Preferences extends BasePreferenceActivity implements SearchPrefere
             bindPreferenceSummaryToValue(findPreference("cloud_storage_mongodb_collection"));
             bindPreferenceSummaryToValue(findPreference("cloud_storage_mongodb_device_status_collection"));
 
+            com.eveningoutpost.dexdrip.garmin.GarminWatchPreferences.attach(this);
+
             final Preference nocturneConnectPref = findPreference("nocturne_connect");
             if (nocturneConnectPref != null) {
                 nocturneConnectPref.setOnPreferenceClickListener(preference -> {

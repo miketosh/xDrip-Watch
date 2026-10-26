@@ -48,12 +48,9 @@ public class GarminBridge {
     /** Bridge test screen: the last watch message outcome. Never holds a glucose value. */
     public static volatile String lastWatchGlucose = "none yet";
 
-    /**
-     * Every fork build takes glucose from the watch's direct G7 collector: the fork replaces the
-     * official xDrip (owner, 2026-10-25). A reading is stored only if the watch marked it reliable.
-     */
+    /** Settings → Smart Watch Features → Garmin watch: listen to the watch at all. */
     public static boolean watchGlucoseEnabled() {
-        return true;
+        return GarminWatchPreferences.isEnabled();
     }
 
     /** Sends one test message to every known watch. */
@@ -223,6 +220,10 @@ public class GarminBridge {
             if (g == null) {
                 lastWatchGlucose = "rejected: " + parsed.reason + " " + JoH.hourMinuteString();
                 report(listener, "Watch glucose rejected: " + parsed.reason);
+                continue;
+            }
+            if (!GarminWatchPreferences.useWatchGlucose()) {
+                lastWatchGlucose = "not used (setting off) seq " + g.sequence + " " + JoH.hourMinuteString();
                 continue;
             }
             if (!watchGlucoseSeen.isNew(g)) continue;

@@ -221,6 +221,43 @@
                 </Preference>
             </PreferenceCategory>
         </PreferenceScreen>
+        <!-- Garmin watch (G7 Scout): com.eveningoutpost.dexdrip.garmin, GarminWatchPreferences -->
+        <PreferenceScreen
+            android:key="garmin_watch_preferences"
+            android:title="@string/garmin_watch_integration">
+            <PreferenceCategory android:title="@string/garmin_watch_integration">
+                <SwitchPreference
+                    android:defaultValue="false"
+                    android:key="garmin_watch_enabled"
+                    android:summary="@string/garmin_watch_enabled_summary"
+                    android:switchTextOff="@string/short_off_text_for_switches"
+                    android:switchTextOn="@string/short_on_text_for_switches"
+                    android:title="@string/garmin_watch_integration" />
+                <SwitchPreference
+                    android:defaultValue="false"
+                    android:dependency="garmin_watch_enabled"
+                    android:key="garmin_watch_use_glucose"
+                    android:summary="@string/garmin_watch_use_glucose_summary"
+                    android:switchTextOff="@string/short_off_text_for_switches"
+                    android:switchTextOn="@string/short_on_text_for_switches"
+                    android:title="@string/garmin_watch_use_glucose" />
+                <Preference
+                    android:dependency="garmin_watch_enabled"
+                    android:key="garmin_watch_send_key"
+                    android:summary="@string/garmin_watch_send_key_summary"
+                    android:title="@string/garmin_watch_send_key" />
+                <Preference
+                    android:dependency="garmin_watch_enabled"
+                    android:key="garmin_watch_diagnostics"
+                    android:summary="@string/garmin_watch_diagnostics_summary"
+                    android:title="@string/garmin_watch_diagnostics">
+                    <intent
+                        android:action="android.intent.action.MAIN"
+                        android:targetClass="com.eveningoutpost.dexdrip.garmin.GarminBridgeTestActivity"
+                        android:targetPackage="@string/local_target_package" />
+                </Preference>
+            </PreferenceCategory>
+        </PreferenceScreen>
         <PreferenceScreen
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
