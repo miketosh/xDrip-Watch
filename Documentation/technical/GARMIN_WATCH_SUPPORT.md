@@ -45,7 +45,7 @@ Settings → Smart Watch Features → **Garmin watch (G7 Scout)**:
 
 ## Who collects
 
-Only one client may use the sensor's app slot, so exactly one side connects to the G7. The switch above and the watch app's menu item **Collector** (Watch / Phone) both set it, and each sends `{t: "collector", v: 1, c: "watch"|"phone", ts}` (epoch seconds of the change) to the other. The newer change wins; on a tie the phone's stands. xDrip sends its choice when it starts listening (if it was ever set) and answers an older watch message with its own; the watch retries an undelivered change at app start and after each reading it sends. A change made on the watch shows a notification on the phone.
+Only one client may use the sensor's app slot, so exactly one side connects to the G7. The switch above and the watch app's menu item **Collector** (Watch / Phone) both set it, and each sends `{t: "collector", v: 1, c: "watch"|"phone", ts}` (epoch seconds of the change) to the other. The newer change wins; on a tie the phone's stands. xDrip sends its choice when it starts listening (time 0 if never changed) and answers an older or tied watch message with its own; the watch retries an undelivered change after each reading it sends and, at app start, sends its own (a never-set watch sends time 0, so xDrip's answer wins). A change made on the watch shows a notification on the phone.
 
 ## Files
 

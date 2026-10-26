@@ -258,11 +258,10 @@ public class GarminBridge {
                 report(listener, "registerForAppEvents failed: " + e);
             }
         }
-        // A choice made here while the watch was away reaches it now.
-        if (GarminWatchPreferences.collectorChangedAtSeconds() > 0) {
-            sendToKnownDevices(GarminWatchMessages.collectorMessage(GarminWatchPreferences.isWatchCollector(),
-                    GarminWatchPreferences.collectorChangedAtSeconds()), listener);
-        }
+        // This phone's choice, also when never changed (time 0): a fresh watch starts as the
+        // collector and must learn that the phone collects (2026-10-26).
+        sendToKnownDevices(GarminWatchMessages.collectorMessage(GarminWatchPreferences.isWatchCollector(),
+                GarminWatchPreferences.collectorChangedAtSeconds()), listener);
     }
 
     /** Contract 6.3: store a reading only if the watch marked it reliable, in range, dated sensibly and new. */
