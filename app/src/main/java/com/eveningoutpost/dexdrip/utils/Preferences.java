@@ -1190,7 +1190,6 @@ public class Preferences extends BasePreferenceActivity implements SearchPrefere
             bindPreferenceSummaryToValue(findPreference("cloud_storage_mongodb_collection"));
             bindPreferenceSummaryToValue(findPreference("cloud_storage_mongodb_device_status_collection"));
 
-            com.eveningoutpost.dexdrip.garmin.GarminWatchPreferences.attach(this);
 
             final Preference nocturneConnectPref = findPreference("nocturne_connect");
             if (nocturneConnectPref != null) {
@@ -1205,6 +1204,8 @@ public class Preferences extends BasePreferenceActivity implements SearchPrefere
             }
 
             addPreferencesFromResource(R.xml.pref_advanced_settings);
+            // After the screen that holds them is loaded; earlier, findPreference found nothing.
+            com.eveningoutpost.dexdrip.garmin.GarminWatchPreferences.attach(this);
             addPreferencesFromResource(R.xml.xdrip_plus_prefs);
 
             bindPreferenceSummaryToValue(findPreference("persistent_high_threshold_mins"));
