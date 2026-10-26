@@ -104,6 +104,12 @@ public class xdrip extends Application {
         new IdempotentMigrations(getApplicationContext()).performAll();
 
 
+        // Garmin watch support: listen to the G7 Scout watch app when the setting is on.
+        if (!isRunningTest() && com.eveningoutpost.dexdrip.garmin.GarminBridge.watchGlucoseEnabled()) {
+            com.eveningoutpost.dexdrip.utilitymodels.Inevitable.task("garmin-watch-listen", 5000, () ->
+                    com.eveningoutpost.dexdrip.garmin.GarminBridge.startListening(getApplicationContext(), null));
+        }
+
         JobManager.create(this).addJobCreator(new XDripJobCreator());
         DailyJob.schedule();
         //SyncService.startSyncServiceSoon();

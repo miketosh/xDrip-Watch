@@ -311,6 +311,16 @@
     <string name="pebble_integration">Pebble Integration</string>
     <string name="send_data_to_pebble_watchface">Send data to Pebble Watchface.</string>
     <string name="pebble_watch_integration">Pebble Watch Integration</string>
+    <string name="garmin_watch_integration">Garmin watch (G7 Scout)</string>
+    <string name="garmin_watch_enabled_summary">Talk to the G7 Scout Connect IQ app on a Garmin watch through Garmin Connect</string>
+    <string name="garmin_watch_use_glucose">Use glucose from the watch</string>
+    <string name="garmin_watch_use_glucose_summary">Store readings the watch takes directly from the Dexcom G7. Needs a started sensor; set the data source to Disabled so the phone does not connect at the same time</string>
+    <string name="garmin_watch_send_key">Send G7 key to watch</string>
+    <string name="garmin_watch_send_key_summary">Lets the watch log in to the sensor with this phone\'s pairing. Open the G7 Scout app on the watch first</string>
+    <string name="garmin_watch_send_key_confirm">Send the saved G7 pairing key to the G7 Scout app on your Garmin watch? Anyone holding this key can read the sensor.</string>
+    <string name="garmin_watch_send">Send</string>
+    <string name="garmin_watch_diagnostics">Garmin diagnostics</string>
+    <string name="garmin_watch_diagnostics_summary">Test messages, watch glucose status and key send log</string>
     <string name="standard_or_trend_pebble_watchface">Standard or Trend Pebble Watchfaces</string>
     <string name="choose_pebble_watchface">Choose Pebble Watchface</string>
     <string name="message_to_display_when_bgl_hits">Message to display when BGL hits the special value above</string>

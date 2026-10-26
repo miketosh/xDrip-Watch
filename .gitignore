@@ -58,3 +58,6 @@ patches/
 *.exe
 *.iml
 .claude/
+
+# Garmin watch support: local signing settings (keystore path and passwords)
+app/local.gradle

@@ -1001,6 +1001,15 @@ public class Ob1G5CollectionService extends G5BaseService {
     }
 
 
+    // Garmin watch support: the saved G7 key (keks getPersistence(1)) for the G7 Scout watch app,
+    // or null until this process has connected once and knows the MAC.
+    public static byte[] getKeksKeyForBridge() {
+        final String mac = transmitterMAC;
+        if (mac == null) return null;
+        final byte[] key = PersistentStore.getBytes(KEKS_ONE + mac);
+        return key != null && key.length == 16 ? key : null;
+    }
+
     public static String getTransmitterID() {
         if (transmitterID == null) {
             init_tx_id();

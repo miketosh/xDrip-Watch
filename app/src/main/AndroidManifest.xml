@@ -120,6 +120,11 @@
         android:appComponentFactory="android.support.v4.app.CoreComponentFactory"
         android:requestLegacyExternalStorage="true"
         android:usesCleartextTraffic="true">
+        <!-- Garmin watch support: diagnostics, opened from Settings -> Smart Watch Features. -->
+        <activity
+            android:name=".garmin.GarminBridgeTestActivity"
+            android:label="Garmin diagnostics"
+            android:exported="false" />
         <activity
             android:name=".HealthPrivacy"
             android:label="xDrip Privacy Policy"

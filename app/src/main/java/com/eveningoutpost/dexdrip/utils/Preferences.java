@@ -1158,6 +1158,7 @@ public class Preferences extends BasePreferenceActivity implements SearchPrefere
             setupBarcodeConfigScanner();
             setupBarcodeShareScanner();
             setupQrFromFile();
+            com.eveningoutpost.dexdrip.garmin.GarminWatchPreferences.attach(this);
             bindPreferenceSummaryToValue(findPreference("cloud_storage_mongodb_uri"));
             bindPreferenceSummaryToValue(findPreference("cloud_storage_mongodb_collection"));
             bindPreferenceSummaryToValue(findPreference("cloud_storage_mongodb_device_status_collection"));
