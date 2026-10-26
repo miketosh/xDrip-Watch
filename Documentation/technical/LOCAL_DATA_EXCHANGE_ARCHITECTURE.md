@@ -1,7 +1,7 @@
 # Local data exchange architecture: Tandem, xDrip-Watch, and Garmin G7 Scout
 
 **Canonical cross-repository design contract**  
-**Updated:** 2026-10-25  
+**Updated:** 2026-10-26  
 **Phone-side repository:** [`miketosh/xDrip-Watch`, branch `garmin-bridge`](https://github.com/miketosh/xDrip-Watch/tree/garmin-bridge)  
 **Watch-side repository:** [`miketosh/garmin7-scout`, branch `main`](https://github.com/miketosh/garmin7-scout/tree/main)
 
@@ -38,8 +38,8 @@ This is the intended topology, not proof that each link is complete. Preserve th
 | Tandem t:slim X2 ↔ Dexcom G7 | Pump keeps receiving G7 glucose using its pump/AID channel. Do not re-pair or displace it as a test shortcut. | Owner's intended active setup; this project must preserve it. |
 | Tandem → xDrip, current status | Read pump-reported IOB and well-defined basal/profile status locally; preserve units, source timestamp, receive timestamp, and freshness. | PumpX2-based adapter prototype exists, but real-pump values and connection coexistence are unverified. Fresh pairing is deliberately blocked pending pairing-secret hardening. |
 | Tandem → xDrip, history | Pull supported event history locally: boluses and delivery state, basal/rate events, profile changes, suspend/resume, and any other verified event types. | Not implemented in the prototype; PumpX2 reports history support as partial. Validate field-by-field. |
-| xDrip → Garmin | Send pump status and recent bolus information, with provenance/time and explicit stale/unknown/disconnected states. | No pump-status message is implemented; current phone→watch types are test `ping` and saved G7 `key`. |
-| Garmin → xDrip | Report accepted glucose readings acquired by the watch's **direct G7 BLE collector**, including glucose/unit, sensor/source timestamp where available, watch receive time, and suitable deduplication identity. | Built 2026-10-25 (watch sender and phone receiver); not yet verified on hardware. |
+| xDrip → Garmin | Send pump status and recent bolus information, with provenance/time and explicit stale/unknown/disconnected states. | `pump_status` message builder and test-screen send action exist; the watch-side receiver/display is not implemented. The bridge also sends `ping`, saved G7 `key` (including sensor name when known), and collector ownership messages. |
+| Garmin → xDrip | Report accepted glucose readings acquired by the watch's **direct G7 BLE collector**, including glucose/unit, sensor/source timestamp where available, watch receive time, and suitable deduplication identity. | Watch sender and phone receiver/parser are built; host tests cover parsing/deduplication. Not verified end-to-end on physical hardware. |
 | Garmin display | Keep direct-G7 glucose as the watch's CGM source, independent of the phone data relay; show phone-supplied pump values separately. | Direct-G7 collector is under development; pump-data display is not implemented. |
 | xDrip local records | Optionally retain received watch readings and acquired pump history with provenance and deduplication, without creating echo loops. | Future work; record ownership/deduplication policy first. |
 
@@ -83,10 +83,10 @@ Keep the current message types separate; never overload saved G7 authentication-
 | Direction | Type | Status | Purpose |
 |---|---|---|---|
 | Phone → watch | `ping` | Existing test | Confirms a basic phone-to-watch message. |
-| Phone → watch | `key` | Existing prototype; secret | Transfers the saved Dexcom G7 key for direct watch authentication. Never log or place it in pump-data messages. |
-| Phone → watch | `pump_status` v1 | Proposed (6.2); phone builder + test button exist, watch receiver not yet | Compact pump snapshot, with pump-reported IOB, labelled current-bolus status, source/receive timestamps and freshness. |
-| Watch → phone | `glucose` v1 | Proposed (6.3); watch sender, phone parser and receiver built, not verified on hardware | A new accepted reading obtained from the watch's direct G7 collector. Renamed from `glucose_reading`: the watch logs a message type only if it is ≤ 12 characters. |
-| Phone → watch | bounded `pump_history` batch (later) | Planned | Validated, timestamped events with deterministic IDs, explicit event semantics and strict count/size limits. |
+| Phone → watch | `key` | Existing prototype; secret | Transfers the saved Dexcom G7 key for direct watch authentication, plus the bonded sensor's advertised name when known. The key itself must never be logged or placed in pump-data messages. |
+| Phone → watch | `pump_status` v1 | Phone builder + test button exist; watch receiver not yet | Compact pump snapshot, with pump-reported IOB, labelled current-bolus status, source/receive timestamps and freshness. |
+| Watch → phone | `glucose` v1 | Watch sender + phone parser/receiver built; not verified on hardware | A new accepted reading obtained from the watch's direct G7 collector. Renamed from `glucose_reading`: the watch logs a message type only if it is ≤ 12 characters. |
+| Phone ↔ watch | `collector` v1 | Implemented on both sides; hardware behavior not verified | Chooses which device owns the G7 connection (`watch` or `phone`) and synchronizes the choice using a timestamp. It is a collection-ownership setting, not a therapy command. |\n| Phone → watch | bounded `pump_history` batch (later) | Planned | Validated, timestamped events with deterministic IDs, explicit event semantics and strict count/size limits. |
 
 ### 6.1 Rules for every v1 message (proposed 2026-10-25 by Claude Code session `garmin7-scout-0a` (xDrip-Watch pump work); awaiting review by Claude Code - garmin7-scout-watch-integrator)
 
@@ -97,7 +97,7 @@ Keep the current message types separate; never overload saved G7 authentication-
 - Receivers ignore unknown keys, so later versions can add fields. Changing a field's meaning or units requires a new `v`.
 - Keys starting `x_` are reserved for xDrip-modelled (not device-reported) values; v1 defines none.
 - No secrets, no raw BLE/protocol bytes. Logs on both sides record type, version, field count and accept/reject reason, never values.
-- No commands in either direction: the watch never asks the phone or pump to do anything (watch bolus is not approved).
+- No therapy-changing commands in this data contract: the watch never asks the phone or pump to deliver a bolus, change basal/profile, suspend, or resume therapy. The `collector` message only synchronizes which device connects to the G7.
 
 ### 6.2 `pump_status` v1 (phone → watch)
 
@@ -155,10 +155,10 @@ Sent once per new G7 reading (new sequence), via Connect IQ `Communications.tran
 ## 8. Gates and evidence
 
 1. ~~Compile the pinned PumpX2 dependency and execute synthetic mapper tests.~~ Done 2026-10-25; see [status, section 9](Tandem_X2_Integration_Status.md#9-build-and-test-evidence-2026-10-25).
-2. Continue phone-side read-only protocol work without fresh pairing until the documented pairing-secret logging/storage concern is addressed.
+2. Keep any fresh-pairing or pump-connection experiments behind the documented owner-approved, reversible test plan; do not disturb the pump's active G7/therapy connection.
 3. Validate IOB and basal semantics against pump display, and determine history message/event semantics.
-4. Agree the bidirectional phone/watch wire schema before coding both ends.
+4. Keep the message schema synchronized across this document, the Garmin watch docs, and both implementations whenever a field or ownership rule changes.
 5. Add synthetic contract tests on phone and watch; separately validate the `0x03` preference and `0x02` fallback.
 6. Only with owner approval, test the real pump and G7 under a reversible plan that preserves the pump↔G7 link and documents restoring the normal phone collector if required.
 
-**Current truth:** local Tandem status/history, watch→phone glucose reporting, and phone→watch pump status remain unfinished. Existing phone→watch `ping` and G7 `key` prototype messages do not prove the overall system works.
+**Current truth (2026-10-26):** the phone/watch bridge implements `ping`, saved-key `key` handoff (with sensor name when known), `collector` v1 ownership synchronization, and the watch-to-phone `glucose` v1 sender/receiver path. Host/unit tests and builds are not physical-device proof. The phone-to-watch `pump_status` receiver/display and `pump_history` are not implemented. Tandem pump values/history and all end-to-end Garmin messaging remain unverified on physical hardware.
