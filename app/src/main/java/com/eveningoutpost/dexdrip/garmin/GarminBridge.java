@@ -1,6 +1,8 @@
 package com.eveningoutpost.dexdrip.garmin;
 
 import android.content.Context;
+import android.os.Handler;
+import android.os.Looper;
 
 import com.eveningoutpost.dexdrip.models.BgReading;
 import com.eveningoutpost.dexdrip.models.JoH;
@@ -107,6 +109,12 @@ public class GarminBridge {
 
     /** Runs the action once the SDK is ready, initializing it first if needed. */
     private static synchronized void withSdk(Context context, StatusListener listener, Runnable action) {
+        // The SDK creates Handlers: initialize and register on the main thread only
+        // (a background caller crashed the app on 2026-10-26: "Can't create handler").
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            new Handler(Looper.getMainLooper()).post(() -> withSdk(context, listener, action));
+            return;
+        }
         final Context app = context.getApplicationContext();
         if (connectIQ == null) {
             connectIQ = ConnectIQ.getInstance(app, ConnectIQ.IQConnectType.WIRELESS);
