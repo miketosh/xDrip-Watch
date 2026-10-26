@@ -2,13 +2,17 @@ package com.eveningoutpost.dexdrip.garmin;
 
 import android.content.Context;
 
+import com.eveningoutpost.dexdrip.BuildConfig;
+import com.eveningoutpost.dexdrip.models.BgReading;
 import com.eveningoutpost.dexdrip.models.JoH;
 import com.eveningoutpost.dexdrip.models.UserError;
 import com.eveningoutpost.dexdrip.services.Ob1G5CollectionService;
+import com.eveningoutpost.dexdrip.utilitymodels.Inevitable;
 import com.garmin.android.connectiq.ConnectIQ;
 import com.garmin.android.connectiq.IQApp;
 import com.garmin.android.connectiq.IQDevice;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -20,6 +24,10 @@ import java.util.Map;
  * P1 sends a test ping; P2 sends the saved G7 key so the watch can
  * authenticate directly. See docs/XDRIP_WATCH_BRIDGE.md there. Pump status
  * follows the v1 contract in LOCAL_DATA_EXCHANGE_ARCHITECTURE.md, section 6.
+ * The other way, the watch sends each reading of its direct G7 connection
+ * ({@code glucose} v1, section 6.3); dev builds store it like any CGM reading,
+ * so xDrip's screens, alerts and local web service (read by Garmin faces such
+ * as Nightscout Watch 2) show it.
  */
 public class GarminBridge {
 
@@ -34,6 +42,15 @@ public class GarminBridge {
 
     private static ConnectIQ connectIQ;
     private static boolean ready;
+    private static final List<Runnable> whenReady = new ArrayList<>();
+    private static final GarminWatchMessages.Deduper watchGlucoseSeen = new GarminWatchMessages.Deduper(64);
+    /** Bridge test screen: the last watch message outcome. Never holds a glucose value. */
+    public static volatile String lastWatchGlucose = "none yet";
+
+    /** Dev builds (next to the official xDrip) take glucose from the watch's direct G7 collector. */
+    public static boolean watchGlucoseEnabled() {
+        return BuildConfig.APPLICATION_ID.endsWith(".garminbridge");
+    }
 
     /** Sends one test message to every known watch. */
     public static void sendTestMessage(Context context, StatusListener listener) {
@@ -74,26 +91,49 @@ public class GarminBridge {
     }
 
     /** Initializes the SDK if needed, then sends the message to every known watch. */
-    private static synchronized void send(Context context, Map<String, Object> message, StatusListener listener) {
+    private static void send(Context context, Map<String, Object> message, StatusListener listener) {
+        withSdk(context, listener, () -> sendToKnownDevices(message, listener));
+    }
+
+    /**
+     * Listens for messages from the watch app on every known watch (again on each call, so a
+     * watch paired later is picked up). Accepted glucose readings are stored; nothing is sent back.
+     */
+    public static void startListening(Context context, StatusListener listener) {
+        withSdk(context, listener, () -> listenToKnownDevices(listener));
+    }
+
+    /** Runs the action once the SDK is ready, initializing it first if needed. */
+    private static synchronized void withSdk(Context context, StatusListener listener, Runnable action) {
         final Context app = context.getApplicationContext();
         if (connectIQ == null) {
             connectIQ = ConnectIQ.getInstance(app, ConnectIQ.IQConnectType.WIRELESS);
         }
         if (ready) {
-            sendToKnownDevices(message, listener);
+            action.run();
             return;
         }
+        whenReady.add(action);
+        if (whenReady.size() > 1) return; // initialization already under way
         report(listener, "Initializing Connect IQ SDK");
         connectIQ.initialize(app, true, new ConnectIQ.ConnectIQListener() {
             @Override
             public void onSdkReady() {
-                ready = true;
+                final List<Runnable> actions;
+                synchronized (GarminBridge.class) {
+                    ready = true;
+                    actions = new ArrayList<>(whenReady);
+                    whenReady.clear();
+                }
                 report(listener, "SDK ready");
-                sendToKnownDevices(message, listener);
+                for (final Runnable r : actions) r.run();
             }
 
             @Override
             public void onInitializeError(ConnectIQ.IQSdkErrorStatus status) {
+                synchronized (GarminBridge.class) {
+                    whenReady.clear();
+                }
                 report(listener, "SDK init error: " + status);
             }
 
@@ -132,6 +172,57 @@ public class GarminBridge {
             } catch (Exception e) {
                 report(listener, "sendMessage failed: " + e);
             }
+        }
+    }
+
+    private static void listenToKnownDevices(StatusListener listener) {
+        final List<IQDevice> devices;
+        try {
+            devices = connectIQ.getKnownDevices();
+        } catch (Exception e) {
+            report(listener, "getKnownDevices failed: " + e);
+            return;
+        }
+        if (devices == null || devices.isEmpty()) {
+            report(listener, "No known Garmin devices (is Garmin Connect paired?)");
+            return;
+        }
+        final IQApp watchApp = new IQApp(WATCH_APP_ID);
+        for (final IQDevice device : devices) {
+            try {
+                connectIQ.registerForAppEvents(device, watchApp, (d, a, messages, status) ->
+                        onWatchMessages(messages, status, listener));
+                report(listener, "Listening to " + device.getFriendlyName() + " for watch glucose");
+            } catch (Exception e) {
+                report(listener, "registerForAppEvents failed: " + e);
+            }
+        }
+    }
+
+    /** Contract 6.3: store a reading only if the watch marked it reliable, in range, dated sensibly and new. */
+    private static void onWatchMessages(List<Object> messages, ConnectIQ.IQMessageStatus status, StatusListener listener) {
+        if (status != ConnectIQ.IQMessageStatus.SUCCESS || messages == null) {
+            report(listener, "Watch message status " + status);
+            return;
+        }
+        for (final Object m : messages) {
+            if (!(m instanceof Map)) continue;
+            if (!GarminWatchMessages.GLUCOSE.equals(((Map<?, ?>) m).get("t"))) continue;
+            final GarminWatchMessages.Parsed parsed = GarminWatchMessages.parseGlucose((Map<?, ?>) m, JoH.tsl());
+            final GarminWatchMessages.Glucose g = parsed.glucose;
+            if (g == null) {
+                lastWatchGlucose = "rejected: " + parsed.reason + " " + JoH.hourMinuteString();
+                report(listener, "Watch glucose rejected: " + parsed.reason);
+                continue;
+            }
+            if (!watchGlucoseSeen.isNew(g)) continue;
+            Inevitable.task("garmin-watch-glucose-" + g.sensor + g.sequence, 100, () -> {
+                final BgReading bgr = BgReading.bgReadingInsertFromG5(g.mgdl, g.readingTimeSeconds * 1000L, "Garmin watch");
+                lastWatchGlucose = (bgr != null ? "stored seq " : "not stored (no started sensor) seq ")
+                        + g.sequence + " " + JoH.hourMinuteString();
+                report(listener, "Watch glucose seq " + g.sequence + " from " + g.sensor
+                        + (bgr != null ? ": stored" : ": not stored, start a sensor in xDrip first"));
+            });
         }
     }
 

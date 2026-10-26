@@ -131,6 +131,12 @@ public class xdrip extends Application {
             }
         }, new IntentFilter("com.eveningoutpost.dexdrip.ExternalStatusline"));
 
+        // xDrip-Watch: dev builds take glucose from the Garmin watch's direct G7 collector.
+        if (!isRunningTest() && com.eveningoutpost.dexdrip.garmin.GarminBridge.watchGlucoseEnabled()) {
+            com.eveningoutpost.dexdrip.utilitymodels.Inevitable.task("garmin-watch-listen", 5000, () ->
+                    com.eveningoutpost.dexdrip.garmin.GarminBridge.startListening(getApplicationContext(), null));
+        }
+
         JobManager.create(this).addJobCreator(new XDripJobCreator());
         DailyJob.schedule();
         //SyncService.startSyncServiceSoon();

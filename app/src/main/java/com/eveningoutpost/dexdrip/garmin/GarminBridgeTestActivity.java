@@ -45,6 +45,14 @@ public class GarminBridgeTestActivity extends Activity {
         });
         layout.addView(key);
 
+        final Button listen = new Button(this);
+        listen.setText("Listen for watch glucose");
+        listen.setOnClickListener(v -> {
+            append("Last watch glucose: " + GarminBridge.lastWatchGlucose);
+            GarminBridge.startListening(this, this::post);
+        });
+        layout.addView(listen);
+
         final Button tandem = new Button(this);
         tandem.setText("Tandem pump test");
         tandem.setOnClickListener(v -> startActivity(new Intent(this, TandemX2TestActivity.class)));
