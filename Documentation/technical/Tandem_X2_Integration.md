@@ -133,7 +133,7 @@ The initial implementation must not calculate pump IOB from bolus history as an 
 | T1 — Local protocol/source feasibility | Verify the PumpX2 API/version, read-only request allowlist, authentication flow, official-app coexistence, and recovery. | Source-derived protocol notes, a pinned dependency, synthetic fixtures, and an owner-approved hardware-test plan. |
 | T2 — Canonical model + fake provider | Define snapshot/event types, units, timestamps, provenance, and freshness. | Unit tests for missing values, reported zero, time conversion, duplicates, stale data, and malformed input. No pump required. |
 | T3 — Read-only provider | Implement only verified status/history reads behind the provider boundary. | Test fixtures/regression tests plus explicit no-therapy-command review; hardware test only after owner approval. |
-| T4 — Phone-to-watch snapshot | Add a new message contract and compact current status view. | Sender/receiver contract tests, simulator verification, then physical phone/watch verification. |
+| T4 — Phone-to-watch snapshot | Implement the watch-side receiver/display for the existing `pump_status` v1 contract and define compact current-status/freshness UI. | Sender/receiver contract tests, simulator verification, then physical phone/watch verification. |
 | T5 — History, polish, resilience | Add bounded event history, optional phone history view, reconnection/recovery, and settings. | Tests for interruption, restart, stale source, duplicates, partial data, and battery/background behavior. |
 
 ## 8. Open questions before live pump work
