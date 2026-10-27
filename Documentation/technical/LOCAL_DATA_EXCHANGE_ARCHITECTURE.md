@@ -1,7 +1,7 @@
 # Local data exchange architecture: Tandem, xDrip-Watch, and Garmin G7 Scout
 
 **Canonical cross-repository design contract**  
-**Updated:** 2026-10-26  
+**Updated:** 2026-10-26 (implementation reconciliation)  
 **Phone-side repository:** [`miketosh/xDrip-Watch`, branch `garmin-bridge`](https://github.com/miketosh/xDrip-Watch/tree/garmin-bridge)  
 **Watch-side repository:** [`miketosh/garmin7-scout`, branch `main`](https://github.com/miketosh/garmin7-scout/tree/main)
 
@@ -84,9 +84,9 @@ Keep the current message types separate; never overload saved G7 authentication-
 |---|---|---|---|
 | Phone → watch | `ping` | Existing test | Confirms a basic phone-to-watch message. |
 | Phone → watch | `key` | Existing prototype; secret | Transfers the saved Dexcom G7 key for direct watch authentication, plus the bonded sensor's advertised name when known. The key itself must never be logged or placed in pump-data messages. |
-| Phone → watch | `pump_status` v1 | Phone builder + test button exist; watch receiver not yet | Compact pump snapshot, with pump-reported IOB, labelled current-bolus status, source/receive timestamps and freshness. |
+| Phone → watch | `pump_status` v1 | Phone builder + test button exist; watch receiver/display not implemented | Compact pump snapshot. Current Java builder emits `t`, `v`, `sent`, `seq`, and `link`; when snapshot values exist it may add `iob`/`iob_t` and `cb_st`/`cb_t`, with `cb_u`/`cb_pt` for non-`none` bolus states. Reserved basal/last-bolus fields are not emitted. Phone builder does not itself implement the watch freshness/display policy. |
 | Watch → phone | `glucose` v1 | Watch sender + phone parser/receiver built; not verified on hardware | A new accepted reading obtained from the watch's direct G7 collector. Renamed from `glucose_reading`: the watch logs a message type only if it is ≤ 12 characters. |
-| Phone ↔ watch | `collector` v1 | Implemented on both sides; hardware behavior not verified | Chooses which device owns the G7 connection (`watch` or `phone`) and synchronizes the choice using a timestamp. It is a collection-ownership setting, not a therapy command. |\n| Phone → watch | bounded `pump_history` batch (later) | Planned | Validated, timestamped events with deterministic IDs, explicit event semantics and strict count/size limits. |
+| Phone ↔ watch | `collector` v1 | Implemented on both sides; hardware behavior not verified | Chooses which device owns the G7 connection (`watch` or `phone`) and synchronizes the choice using a timestamp. It is a collection-ownership setting, not a therapy command. |\n| Phone → watch | `slot` v1 | Phone message builder exists; receiver/behavior requires watch-side confirmation | Carries the desired G7 slot choice `s` = `auto`, `02`, or `03`. Keep it separate from `collector`: slot preference selects the G7 role; collector selects which device attempts collection. Do not claim physical slot behavior from the message builder alone. |\n| Phone → watch | bounded `pump_history` batch (later) | Planned | Validated, timestamped events with deterministic IDs, explicit event semantics and strict count/size limits. |
 
 ### 6.1 Rules for every v1 message (proposed 2026-10-25 by Claude Code session `garmin7-scout-0a` (xDrip-Watch pump work); awaiting review by Claude Code - garmin7-scout-watch-integrator)
 
