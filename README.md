@@ -39,7 +39,7 @@ Your data is yours and can be exported in many different ways. xDrip also interc
 
 ## xDrip-Watch fork development (experimental)
 
-This fork's `garmin-bridge` branch contains experimental phone-to-Garmin Connect IQ bridge work. It is separate from upstream xDrip support. The Tandem t:slim X2 integration now has an **opt-in PumpX2 BLE adapter prototype** and synthetic response-mapper tests, but it is not wired into a UI/Garmin message path and has not been tested against a physical pump.
+This fork's `garmin-bridge` branch contains experimental phone-to-Garmin Connect IQ bridge work. It is separate from upstream xDrip support. The Tandem t:slim X2 integration has an **opt-in PumpX2 BLE adapter prototype** and synthetic response-mapper tests. It is reachable only from a development test screen, is not wired to app startup or the Garmin message path, and has not been tested against a physical pump.
 
 - [Working agreement for contributors and coding assistants](AGENTS.md)
 - [Tandem t:slim X2 integration design](Documentation/technical/Tandem_X2_Integration.md)
