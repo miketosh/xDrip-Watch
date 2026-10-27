@@ -9,7 +9,7 @@
 
 The owner uses a Tandem t:slim X2, an Android phone running xDrip+, and a Garmin Connect IQ watch integration split across this repository and [garmin7-scout](https://github.com/miketosh/garmin7-scout).
 
-The `garmin-bridge` source includes a phone-side Garmin Connect IQ bridge. This iteration adds the pinned PumpX2 community library, `TandemX2PumpClient`, a transport-independent `TandemX2PumpSnapshot`, a response mapper, and synthetic mapper test sources. The client is opt-in and has no UI call site; no real pump communication has been verified. Existing xDrip Nightscout components are present in the base app, but the Tandem prototype is not connected to them.
+The `garmin-bridge` source includes a phone-side Garmin Connect IQ bridge. This iteration adds the pinned PumpX2 community library, `TandemX2PumpClient`, a transport-independent `TandemX2PumpSnapshot`, a response mapper, and synthetic mapper test sources. The client is opt-in and reachable only from a development test screen; it is not called at app startup or wired into `GarminBridge`. No real pump communication has been verified. Existing xDrip Nightscout components are present in the base app, but the Tandem prototype is not connected to them.
 
 ## 2. Existing phone-side code
 
