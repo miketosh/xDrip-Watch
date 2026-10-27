@@ -47,7 +47,7 @@ This fork's `garmin-bridge` branch contains experimental phone-to-Garmin Connect
 - [Tandem integration test plan](Documentation/technical/Tandem_X2_Integration_Test_Plan.md)
 - [Android Auto integration plan](Documentation/technical/ANDROID_AUTO_INTEGRATION_PLAN.md) — feasibility-first; verifies a supported, policy-compliant in-car surface before adding any car UI.
 
-The design is local-first and intended to be read-only at the therapy level. PumpX2 is experimental and not an official Tandem SDK; the wrapper allowlists authentication and selected status requests only. Fresh pairing is deliberately blocked because PumpX2 v1.9.3 logs and persists pairing codes. Do not start a live pump session before pairing-secret handling and official-app coexistence/recovery are reviewed. Never treat modeled insulin estimates as pump-reported values.
+The pump status/history path is local-first and read-only at the therapy level. Separately, this branch contains an owner-approved, experimental **phone-initiated bolus prototype** behind the explicit gates in `AGENTS.md`; it is not part of the Garmin bridge and has never been sent to a pump. PumpX2 is experimental and not an official Tandem SDK. Fresh pairing remains blocked because PumpX2 v1.9.3 logs and persists pairing codes. Do not start a live pump session before pairing-secret handling and official-app coexistence/recovery are reviewed. Never treat modeled insulin estimates as pump-reported values.
 
 - [Why Nightscout REST is not the local exchange protocol](Documentation/technical/Tandem_Nightscout_Integration_Options.md)
 - [Local Tandem ↔ xDrip ↔ Garmin data-exchange contract](Documentation/technical/LOCAL_DATA_EXCHANGE_ARCHITECTURE.md)
