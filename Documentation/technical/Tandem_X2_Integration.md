@@ -45,13 +45,13 @@ No public, supported Tandem developer API or usable local interface has been est
 | Tandem Source / cloud history | Optional future fallback or history-only provider; not the initial path | Requires internet and account authentication; upload latency can make it unsuitable for current IOB or current basal status. Undocumented service behavior would need separate review and may break without notice. |
 | xDrip's existing insulin/treatment model | A distinct estimate that may be useful for other display purposes | `InsulinManager` and the insulin profile classes model insulin action. They must not be presented as the pump's own IOB or pump-delivery record. |
 
-**Implementation decision:** use the pinned PumpX2 `v1.9.3` library behind `TandemX2PumpClient`, with a request allowlist and transport-independent `TandemX2PumpSnapshot`. A specific target Bluetooth address is required; the client starts only when explicitly called and is not currently wired to app startup, UI, or GarminBridge. Do not add a cloud dependency.
+**Implementation decision:** use the pinned PumpX2 `v1.9.3` library behind `TandemX2PumpClient`, with a request allowlist and transport-independent `TandemX2PumpSnapshot`. A specific target Bluetooth address is required; the client starts only when explicitly called from the development test screen, and is not wired to app startup or `GarminBridge`. Do not add a cloud dependency.
 
 ## 3A. Local peer exchange is not Nightscout cloud
 
 Nightscout's HTTP API is not the local phone↔watch protocol. The requested feature does not require uploading data to a Nightscout server. xDrip has Android Wear OS Data Layer and legacy external-status patterns, but neither is the Garmin wire protocol. Use Garmin Connect IQ Mobile SDK messaging for xDrip↔Garmin and keep pump↔xDrip local pump communication separate.
 
-See [the canonical local data-exchange contract](LOCAL_DATA_EXCHANGE_ARCHITECTURE.md). The existing prototype has only phone→watch `ping` and saved G7 `key` message types. There is no pump-status message or watch→phone glucose receive path yet. Do not add cloud upload as part of the Tandem feature.
+See [the canonical local data-exchange contract](LOCAL_DATA_EXCHANGE_ARCHITECTURE.md). The phone/watch bridge also has `collector` v1 ownership synchronization and `slot` v1 preference messages. A phone-side `pump_status` v1 builder and manual test-screen send action exist, but the watch-side receiver/display is not implemented. The watch-to-phone `glucose` v1 sender/parser/receiver path exists in source and has host-test coverage; end-to-end physical delivery remains unverified. Do not add cloud upload as part of the Tandem feature.
 
 ## 4. Proposed architecture
 
@@ -72,7 +72,7 @@ Local repository/cache (scope and retention TBD)
         +----> Phone status/history UI (later, if needed)
         |
         v
-Versioned GarminBridge pump-status message (not implemented)
+Phone-side `pump_status` v1 builder + manual test send (watch receiver/display not implemented)
         |
         v
 garmin7-scout phone-message receiver / watch display
@@ -114,7 +114,7 @@ The initial implementation must not calculate pump IOB from bolus history as an 
 
 ## 6. Safety, privacy, and connection ownership
 
-**Important PumpX2 pairing limitation:** the inspected PumpX2 v1.9.3 source logs the user-supplied pairing code from `TandemPump.pair()` through Timber and persists it using `PumpState` preferences. Passing a null logging tree to the handler does not prove there are no other Timber sinks in the host app. For that reason, `TandemX2PumpClient.submitPairingCode()` deliberately refuses fresh pairing in this prototype. Scanning and reaching a pairing-required callback are not proof that authentication can complete. Before enabling fresh pairing, address secret logging and decide how pairing/authentication state should be stored and cleared.
+**Pairing safety status (source-derived; not physical-pump validated):** `TandemX2PumpClient` overrides PumpX2 v1.9.3's `pair()` to omit its pairing-code and J-PAKE-derived-secret log lines, allows pairing only in `OWN_PAIRING` mode, and refuses to start while any Timber tree is planted because PumpX2 also logs parsed pump messages. `PumpState` still stores the pairing code and derived secret in app-private preferences; clearing that state is not implemented. Request-policy tests cover the logging guard, but no captured-log test during a real pairing or physical-pump validation has been recorded. Keep pairing opt-in and supervised; do not claim it is proven.
 
 
 - The status/history provider and Garmin bridge are read-only at the therapy level: no watch-originated or automatic bolus, basal, profile, suspension, resume, or Control-IQ-setting commands. The phone-initiated bolus experiment is a separate, owner-approved exception with explicit dev-only gates documented in `AGENTS.md` and `Tandem_X2_Integration_Status.md`; it is not enabled by the watch contract. The PumpX2 wrapper allowlists authentication-package messages and selected status requests for the status client.
@@ -149,4 +149,4 @@ These questions do not block writing the design or implementing a fake provider,
 
 ## 9. Current status
 
-See [Tandem integration status](Tandem_X2_Integration_Status.md) and [test plan](Tandem_X2_Integration_Test_Plan.md). Current state is an opt-in PumpX2 adapter prototype plus synthetic response-mapper tests. No test has run against a pump or Garmin watch, and the adapter is not wired to a UI. Fresh pairing is deliberately blocked pending PumpX2 pairing-code log/persistence hardening. Existing Garmin P1/P2 work remains a separate G7 bridge.
+See [Tandem integration status](Tandem_X2_Integration_Status.md) and [test plan](Tandem_X2_Integration_Test_Plan.md). Current state is an opt-in PumpX2 adapter prototype plus synthetic response-mapper tests. No test has run against a pump or Garmin watch. The adapter has a development test-screen caller but is not wired to app startup or `GarminBridge`; the phone-side `pump_status` builder exists, while the watch receiver/display does not. The custom non-logging pairing override and fail-closed Timber guard are implemented in source, but actual pump pairing, field semantics, official-app coexistence/recovery, and end-to-end phone/watch messaging remain unverified. Existing Garmin G7 bridge work is separate from Tandem support.
