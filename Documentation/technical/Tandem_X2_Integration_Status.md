@@ -83,7 +83,7 @@ The upstream [tconnectsync](https://github.com/jwoglom/tconnectsync) repository 
 See [the design document](Tandem_X2_Integration.md) and [the test plan](Tandem_X2_Integration_Test_Plan.md).
 
 
-## 7. Newly identified pairing-code safety blocker
+## 7. Historical pairing-code safety blocker (superseded by section 10)
 
 Inspection of PumpX2 v1.9.3's `TandemPump.pair()` shows it emits a Timber INFO message containing the pairing code and stores the code through `PumpState` preferences. The wrapper intentionally refuses to pass a user-entered code into that method until log exposure and credential persistence have been reviewed and addressed. Passing a null logging tree to PumpX2 does not guarantee that another Timber tree is absent.
 
