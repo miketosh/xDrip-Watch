@@ -1,6 +1,6 @@
 # Tandem t:slim X2 integration — implementation status
 
-**Last reviewed:** 2026-10-25  
+**Last reviewed:** 2026-10-27  
 **Source baseline before implementation:** `79096f07c059d8df09da87d805a0d80cc9813932` (2026-10-25)  
 **Tandem integration status:** Opt-in adapter prototype; no end-to-end functionality verified  
 **Validation performed:** PumpX2 source/API inspection; on 2026-10-25 the app compiles and assembles (`fastDev`) with PumpX2 after two build fixes, and the synthetic mapper tests pass (section 9). No live pump connection or physical Garmin test has been run.
@@ -15,24 +15,24 @@ The `garmin-bridge` source includes a phone-side Garmin Connect IQ bridge. This 
 
 | Location | Observed role | What it does not establish |
 |---|---|---|
-| `app/src/main/java/com/eveningoutpost/dexdrip/garmin/GarminBridge.java` | Initializes Garmin Connect IQ messaging, sends `ping`, and has a `sendKey` path. | Does not read Tandem data. The key path is specifically the saved **Dexcom G7** key. |
-| `app/src/main/java/com/eveningoutpost/dexdrip/garmin/GarminBridgeTestActivity.java` | Manual phone-side test screen with ping and a two-tap G7-key transfer control. | This is not an automated test and does not prove live pump or physical watch behavior. |
+| `app/src/main/java/com/eveningoutpost/dexdrip/garmin/GarminBridge.java` | Sends `ping`, saved G7 `key`, `collector` v1 and `slot` v1; provides a phone-side `pump_status` v1 builder/send path; `startListening` parses/deduplicates incoming `glucose` v1 and collector updates. | Does not read Tandem data. The `pump_status` watch receiver/display is absent, and physical phone/watch delivery is unverified. The key path is specifically the saved **Dexcom G7** key. |
+| `app/src/main/java/com/eveningoutpost/dexdrip/garmin/GarminBridgeTestActivity.java` | Manual phone-side test screen with ping, G7-key transfer, watch-glucose listening, a Tandem test-screen entry, and a manual `pump_status` send action. | These are manual development controls, not automated tests; they do not prove live pump or physical watch behavior. |
 | `app/src/main/java/com/eveningoutpost/dexdrip/services/Ob1G5CollectionService.java` | Exposes `getKeksKeyForBridge()`, which reads a 16-byte saved G7 key after the collector knows the transmitter MAC. | This is a Dexcom sensor pairing detail, not a Tandem authentication or pump-data interface. |
 | `app/src/main/java/com/eveningoutpost/dexdrip/insulin/InsulinManager.java` and `Insulin.java` | Existing insulin profile and insulin-action model infrastructure. | Must not be treated as evidence that pump-reported IOB or delivered-basal history exists. |
 | `app/src/main/java/com/eveningoutpost/dexdrip/insulin/aaps/AAPSStatusHandler.java` | Processes AndroidAPS/Nightscout device-status messages; updates pump reservoir/battery status when those fields are present. | Does not establish a direct Tandem X2 connection or availability of all desired fields. |
-| `app/src/main/java/com/eveningoutpost/dexdrip/tandem/TandemX2PumpClient.java` | Opt-in PumpX2 BLE client with a target-MAC filter and a request allowlist for authentication plus selected current-status reads. | Fresh pairing is intentionally blocked: upstream `TandemPump.pair()` logs and persists the pairing code. No UI caller, physical pump test, history retrieval, or Garmin status delivery. |
+| `app/src/main/java/com/eveningoutpost/dexdrip/tandem/TandemX2PumpClient.java` | Opt-in PumpX2 BLE client with a target-MAC filter, request allowlist, and a custom non-logging `pair()` override restricted to `OWN_PAIRING`. | `start()` fails closed if any Timber tree is planted because PumpX2 logs parsed pump messages. PumpX2 still stores the pairing code and derived secret in app-private preferences; clearing is not implemented. No physical pump test, history retrieval, or watch-side pump-status receiver. |
 | `app/src/main/java/com/eveningoutpost/dexdrip/tandem/TandemX2PumpSnapshot.java` and `TandemX2StatusMapper.java` | Partial snapshot and mapping of two IOB response types, basal raw fields, and current-bolus status. | Synthetic code only. Basal rate scale and response values are not validated against a pump display. |
 | `app/src/main/java/com/eveningoutpost/dexdrip/wearintegration/ExternalStatusService.java` | Handles an external status-line string and extracts basal-rate/TBR-like information from that string. | Not a Tandem protocol parser; parsed text must not be represented as pump data unless its origin is independently established. |
 
 ## 3. Garmin bridge status is separate from Tandem status
 
-The companion repo's bridge notes describe the following bring-up work, which must continue to be treated separately from Tandem support:
+The current G7 bridge source status is separate from Tandem support:
 
-- **P1 — phone-to-watch message path:** the phone bridge has a ping test. The companion documentation reported this as built but not yet validated on hardware at the time of that note.
-- **P2 — saved G7 key handoff:** the phone bridge can send the saved G7 key, and the watch has a saved-key authentication path. The companion documentation reports simulator evidence but leaves real-sensor/physical-watch behavior open.
-- This is not Tandem support. A successful ping or G7 key handoff does not validate Tandem discovery, authentication, IOB, bolus history, basal history, or pump safety.
+- **Phone → watch:** `ping`, saved G7 `key` (sensor name when known), `collector` v1, and `slot` v1 are implemented in source. A phone-side `pump_status` v1 builder and manual test action exist, but the watch-side receiver/display does not.
+- **Watch → phone:** the watch's `glucose` v1 sender and xDrip's parser/receiver/deduper exist in source and have host-test coverage. `GarminBridge.startListening` stores accepted readings in xDrip when listening is active and the xDrip sensor is started.
+- **Validation boundary:** no physical phone/watch end-to-end delivery or live Tandem pump communication is recorded. A successful ping, key handoff, or glucose parser test does not validate Tandem discovery, authentication, IOB, bolus history, basal history, or pump safety.
 
-Treat those statuses as reported by the companion project's documentation, not as new physical-test evidence from this repository inspection. See the [Garmin bridge design notes](https://github.com/miketosh/garmin7-scout/blob/main/docs/XDRIP_WATCH_BRIDGE.md).
+See the [Garmin bridge design notes](https://github.com/miketosh/garmin7-scout/blob/main/docs/XDRIP_WATCH_BRIDGE.md) and the [canonical local data-exchange contract](LOCAL_DATA_EXCHANGE_ARCHITECTURE.md).
 
 ## 4. Where tests live
 
@@ -95,9 +95,9 @@ This is a deliberate functional limitation, not a passing connection test. The c
 ## 8. Owner-confirmed end-state data paths (2026-10-25)
 
 - t:slim X2 continues to talk directly to the Dexcom G7 using its pump/AID connection.
-- xDrip's Tandem adapter is intended to obtain pump IOB/basal status and pull pump history locally. It remains prototype-only; fresh pairing is blocked and no real-pump validation is recorded.
-- The Garmin continues to read glucose directly from the G7. Watch-to-phone glucose reporting is planned, not implemented.
-- xDrip-to-watch pump status/bolus reporting is planned, not implemented.
+- xDrip's Tandem adapter is intended to obtain pump IOB/basal status and pull pump history locally. It remains prototype-only; the custom non-logging pairing override exists, but no real-pump validation is recorded and clearing stored pairing state is not implemented.
+- The Garmin's direct-G7 collector has a source-level `glucose` v1 sender; xDrip has the matching parser/receiver/deduper and stores accepted readings when listening is active and a sensor is started. Host tests/builds are not proof of physical phone/watch delivery.
+- xDrip's phone-side `pump_status` v1 builder and manual send action exist. The watch-side pump-status receiver/display and `pump_history` are not implemented, and pump status is not sent automatically.
 - No Nightscout server upload is required. The Garmin path uses the Connect IQ phone-message bridge; xDrip's Android Wear Data Layer and Nightscout REST uploader are not Garmin substitutes.
 - Preferred G7 authentication slot is watch `0x03`; if that path cannot be made reliable, app `0x02` is an acceptable final endpoint. When the watch uses `0x02`, xDrip must not simultaneously collect from the G7 in the final configuration. The pump's independent G7 connection must remain undisturbed.
 - ~~Mobile bolus is out of scope. Whether any third-party API supports it is unverified; the current goal is read-only status and history.~~ Superseded 2026-10-25: the owner approved an experimental, gated phone-initiated bolus (`AGENTS.md`). PumpX2 implements the t:slim X2 remote-bolus messages (community reverse-engineered, not a Tandem API); behaviour on the owner's pump is unverified.
