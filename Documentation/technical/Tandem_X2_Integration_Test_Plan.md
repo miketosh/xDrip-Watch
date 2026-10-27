@@ -73,14 +73,14 @@ Keep current G7 pairing/authentication fixtures and Tandem fixtures separate.
 
 ## 6. Integration gates
 
-### Pairing-code safety gate (must pass before fresh pairing is enabled)
+### Pairing-code safety gate (source mitigations implemented; runtime validation still required)
 
 **Status 2026-10-25 (Claude Code session `garmin7-scout-0a` (xDrip-Watch pump work)):** addressed in source, partly covered by tests. `TandemX2PumpClient.pair()` replaces PumpX2's `pair()` without its log lines; the client never calls `super.onPumpConnected()`; `start()` refuses while any Timber tree is planted (`TandemX2RequestPolicyTest.loggingGuardFailsClosedWhenATreeIsPlanted`); pairing is accepted only in `OWN_PAIRING` mode, and malformed codes are rejected (`pairingCodesAreNormalizedOrRejected`). Storage: PumpX2's `PumpState` keeps the code and derived secret in app-private SharedPreferences (same protection as xDrip's saved G7 key); clearing them is not implemented yet. **Not covered by tests:** the mode check inside the client (needs an Android runtime), and a captured-log check during a real pairing.
 
-Original gate text: PumpX2 v1.9.3's current `TandemPump.pair()` logs the pairing code through Timber and persists it through `PumpState`. Before enabling fresh pairing:
-- Remove or safely redact upstream pairing-code logging and review other authentication/protocol logs for key/challenge leakage.
-- Document the intended local storage, retention, and clearing behavior for pairing code and derived authentication state.
-- Add a deterministic test proving the adapter refuses pairing until the safety gate is enabled, and tests that no credential material appears in captured logs.
+Original gate rationale (historical): PumpX2 v1.9.3's `TandemPump.pair()` logs the pairing code through Timber and persists it through `PumpState`. The adapter now overrides `pair()` without those log lines and fails closed if any Timber tree is planted, because PumpX2 also logs parsed pump messages. Before treating this gate as fully validated:
+- Re-check the custom non-logging override whenever PumpX2 is upgraded and review other authentication/protocol logs for key/challenge leakage.
+- Document and test clearing/retention of the pairing code and derived authentication state; clearing is not implemented yet.
+- Add a captured-log check during a real pairing attempt when a supervised pump test is approved.
 - Do not rely solely on passing a null Timber tree; another app/library may have installed a tree.
 
 
@@ -91,7 +91,7 @@ Pass criteria: all model/parser/provider tests pass with synthetic fixtures; no 
 
 ### Gate B — Android phone bridge
 
-Pass criteria: after the BLE provider has been separately verified, the phone can create a canonical snapshot and send a versioned status message to the watch receiver; sender and receiver logs confirm type/version/status only, without secrets. Test both absent and stale data. This prototype does not yet implement the Garmin status message.
+Pass criteria: after the BLE provider has been separately verified, the phone can create a canonical snapshot and send a versioned status message to the watch receiver; sender and receiver logs confirm type/version/status only, without secrets. Test both absent and stale data. The phone-side `pump_status` v1 builder and manual send action exist; the watch-side receiver/display remains unimplemented, so this gate is not yet passed.
 
 ### Gate C — simulator/watch display
 
