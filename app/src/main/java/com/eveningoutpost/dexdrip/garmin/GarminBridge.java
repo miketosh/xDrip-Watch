@@ -144,6 +144,18 @@ public class GarminBridge {
         }
     }
 
+    // The watch-message callback already runs after SDK initialization; it has
+    // no Activity/Context argument, so echo through the initialized SDK directly.
+    private static void sendCollectorToKnownDevices(StatusListener listener) {
+        sendToKnownDevices(GarminWatchMessages.collectorMessage(GarminWatchPreferences.collectorMode(),
+                GarminWatchPreferences.collectorChangedAtSeconds()), listener);
+        if (GarminWatchMessages.supportsField(watchFieldVersions, "slot.s", 2)
+                && GarminWatchMessages.supportsField(watchFieldVersions, "slot.ts", 2)) {
+            sendToKnownDevices(GarminWatchMessages.slotMessage(GarminWatchPreferences.slotChoice(),
+                    GarminWatchPreferences.slotChangedAtSeconds()), listener);
+        }
+    }
+
     /** Initializes the SDK if needed, then sends the message to every known watch. */
     private static void send(Context context, Map<String, Object> message, StatusListener listener) {
         withSdk(context, listener, () -> sendToKnownDevices(message, listener));
@@ -389,7 +401,7 @@ public class GarminBridge {
             report(listener, "Watch set G7 slot to " + slot.choice);
             // Echo the accepted choice so both ends converge; include collector
             // state too if leaving slot 03 disabled Dual collection.
-            sendCollector(xdrip.getAppContext(), listener);
+            sendCollectorToKnownDevices(listener);
         } else if (slot.changedAtSeconds == phoneChangedAt &&
                 slot.choice.equals(GarminWatchPreferences.slotChoice())) {
             // Already synchronized.
