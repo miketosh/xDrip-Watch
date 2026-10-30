@@ -39,7 +39,7 @@ public final class GarminWatchPreferences {
     /** While the watch collects: switch back to this phone after missed readings. */
     public static final String PREF_FALLBACK = "garmin_watch_fallback";
     public static final String PREF_FALLBACK_MINUTES = "garmin_watch_fallback_minutes";
-    /** The watch's G7 slot: "auto" (try 03, use 02 after a refusal), "02" or "03". */
+    /** Shared phone/watch G7 slot preference: "auto" (try 03, use 02 after refusal), "02" or "03". */
     public static final String PREF_SLOT = "garmin_watch_slot";
     /**
      * Dual collector: the watch collects on slot 03 while this phone keeps collecting on 02.
