@@ -35,8 +35,8 @@ public class GarminBridge {
 
     private static final String TAG = "GarminBridge";
 
-    // garmin7-scout manifest.xml iq:application id.
-    public static final String WATCH_APP_ID = "8d8a5d1f6b4a4f5fa8d3a7f0d2c9b641";
+    // garmin7-scout manifest.xml iq:application id (Garmin7-Connector's is in GarminWatchMessages).
+    public static final String WATCH_APP_ID = GarminWatchMessages.SCOUT_APP_ID;
 
     public interface StatusListener {
         void onStatus(String line);
@@ -225,7 +225,7 @@ public class GarminBridge {
             report(listener, "No known Garmin devices (is Garmin Connect paired?)");
             return;
         }
-        final IQApp watchApp = new IQApp(WATCH_APP_ID);
+        final List<String> appIds = GarminWatchPreferences.watchAppTargets();
         int connected = 0;
         for (final IQDevice device : devices) {
             IQDevice.IQDeviceStatus status = null;
@@ -239,7 +239,9 @@ public class GarminBridge {
                 continue;
             }
             connected++;
-            sendWithRetry(device, watchApp, message, listener, 1);
+            for (final String appId : appIds) {
+                sendWithRetry(device, new IQApp(appId), message, listener, 1);
+            }
         }
         if (connected == 0) {
             report(listener, "No Garmin watch connected to Garmin Connect");
@@ -265,7 +267,7 @@ public class GarminBridge {
                             sendWithRetry(device, watchApp, message, listener, attempt + 1), SEND_RETRY_MS);
                 } else {
                     report(listener, "Send " + message.get("t") + " failed after " + attempt + " tries: " + messageStatus
-                            + " (is the G7 Scout app open on the watch?)");
+                            + " (is the watch app open?)");
                 }
             });
         } catch (Exception e) {
@@ -285,15 +287,17 @@ public class GarminBridge {
             report(listener, "No known Garmin devices (is Garmin Connect paired?)");
             return;
         }
-        final IQApp watchApp = new IQApp(WATCH_APP_ID);
+        // Both watch apps (G7 Scout, Garmin7-Connector); messages go to the ones heard from.
         for (final IQDevice device : devices) {
-            try {
-                connectIQ.registerForAppEvents(device, watchApp, (d, a, messages, status) ->
-                        onWatchMessages(messages, status, listener));
-                report(listener, "Listening to " + device.getFriendlyName() + " for watch glucose");
-            } catch (Exception e) {
-                report(listener, "registerForAppEvents failed: " + e);
+            for (final String appId : GarminWatchMessages.WATCH_APP_IDS) {
+                try {
+                    connectIQ.registerForAppEvents(device, new IQApp(appId), (d, a, messages, status) ->
+                            onWatchMessages(a, messages, status, listener));
+                } catch (Exception e) {
+                    report(listener, "registerForAppEvents failed: " + e);
+                }
             }
+            report(listener, "Listening to " + device.getFriendlyName() + " for watch glucose");
         }
         // Advertise supported field versions before optional newer fields.
         sendToKnownDevices(GarminWatchMessages.capabilitiesMessage(true), listener);
@@ -303,10 +307,14 @@ public class GarminBridge {
     }
 
     /** Contract 6.3: store a reading only if the watch marked it reliable, in range, dated sensibly and new. */
-    private static void onWatchMessages(List<Object> messages, ConnectIQ.IQMessageStatus status, StatusListener listener) {
+    private static void onWatchMessages(IQApp app, List<Object> messages, ConnectIQ.IQMessageStatus status, StatusListener listener) {
         if (status != ConnectIQ.IQMessageStatus.SUCCESS || messages == null) {
             report(listener, "Watch message status " + status);
             return;
+        }
+        // Before any reply below, so a newly heard watch app gets it.
+        if (app != null && GarminWatchPreferences.noteWatchApp(app.getApplicationId())) {
+            report(listener, "Watch app " + app.getApplicationId() + " heard; messages now go to it");
         }
         for (final Object m : messages) {
             if (!(m instanceof Map)) continue;
