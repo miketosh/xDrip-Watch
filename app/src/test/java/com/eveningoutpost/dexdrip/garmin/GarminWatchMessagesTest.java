@@ -26,7 +26,8 @@ public class GarminWatchMessagesTest {
         assertEquals(1, caps.get("v"));
         assertTrue(GarminWatchMessages.isCapabilitiesMessage(caps));
         final String fields = (String) caps.get("f");
-        assertTrue(GarminWatchMessages.supportsField("|" + fields + "|", "slot.s", 2));
+        assertTrue(GarminWatchMessages.supportsField("|" + fields + "|", "collector.c", 2));
+        assertFalse(fields.contains("slot."));
         assertTrue(fields.contains("glucose.rel=1"));
         assertFalse(fields.contains("pump_status.t"));
         assertFalse(GarminWatchMessages.supportsField(null, "slot.s", 2));
@@ -293,38 +294,30 @@ public class GarminWatchMessagesTest {
     }
 
     @Test
-    public void slotMessageCarriesChoiceAndTimestamp() {
-        final Map<String, Object> message = GarminWatchMessages.slotMessage("03", NOW_S);
-        assertEquals("03", message.get("s"));
-        assertEquals(NOW_S, message.get("ts"));
-        assertEquals("slot", message.get("t"));
-        assertEquals(1, message.get("v"));
-        assertEquals("02", GarminWatchMessages.slotMessage("02", NOW_S).get("s"));
-        assertEquals("auto", GarminWatchMessages.slotMessage("04", NOW_S).get("s"));
+    public void collectorModesAreTheFiveOwnerChoices() {
+        for (String mode : new String[]{"none", "phone", "watch02", "watch03", "dual"}) {
+            final GarminWatchMessages.Collector c = GarminWatchMessages.parseCollector(
+                    GarminWatchMessages.collectorMessage(mode, NOW_S));
+            assertNotNull(mode, c);
+            assertEquals(mode, c.mode);
+        }
+        assertFalse(GarminWatchMessages.parseCollector(GarminWatchMessages.collectorMessage("none", NOW_S)).watch);
+        assertTrue(GarminWatchMessages.parseCollector(GarminWatchMessages.collectorMessage("watch02", NOW_S)).watch);
+        assertNull(GarminWatchMessages.parseCollector(GarminWatchMessages.collectorMessage("watch04", NOW_S)));
     }
 
     @Test
-    public void slotRoundTripsAndRejectsMalformedMessages() {
-        final GarminWatchMessages.Slot parsed = GarminWatchMessages.parseSlot(
-                GarminWatchMessages.slotMessage("03", NOW_S));
-        assertNotNull(parsed);
-        assertEquals("03", parsed.choice);
-        assertEquals(NOW_S, parsed.changedAtSeconds);
-        final Map<String, Object> invalidTime = GarminWatchMessages.slotMessage("03", NOW_S);
-        invalidTime.put("ts", -1);
-        assertNull(GarminWatchMessages.parseSlot(invalidTime));
-        final Map<String, Object> invalid = GarminWatchMessages.slotMessage("03", NOW_S);
-        invalid.put("s", "04");
-        assertNull(GarminWatchMessages.parseSlot(invalid));
-    }
-
-    @Test
-    public void phoneWinsSlotTimestampTiesAndNewerWatchChoiceWins() {
-        final GarminWatchMessages.Slot newer = GarminWatchMessages.parseSlot(
-                GarminWatchMessages.slotMessage("02", NOW_S + 1));
-        final GarminWatchMessages.Slot tied = GarminWatchMessages.parseSlot(
-                GarminWatchMessages.slotMessage("02", NOW_S));
-        assertTrue(GarminWatchMessages.replacesPhoneSlot(newer, NOW_S));
-        assertFalse(GarminWatchMessages.replacesPhoneSlot(tied, NOW_S));
+    public void olderWatchesGetAndSendTheOlderValues() {
+        assertEquals("watch02", GarminWatchMessages.wireCollectorValue("watch02", true));
+        assertEquals("watch", GarminWatchMessages.wireCollectorValue("watch02", false));
+        assertEquals("watch", GarminWatchMessages.wireCollectorValue("watch03", false));
+        assertEquals("both", GarminWatchMessages.wireCollectorValue("dual", false));
+        assertEquals("phone", GarminWatchMessages.wireCollectorValue("none", false));
+        assertEquals("phone", GarminWatchMessages.wireCollectorValue("phone", false));
+        assertEquals("dual", GarminWatchMessages.fromLegacyCollector("both", "phone"));
+        assertEquals("watch02", GarminWatchMessages.fromLegacyCollector("watch", "watch02"));
+        assertEquals("watch03", GarminWatchMessages.fromLegacyCollector("watch", "phone"));
+        assertEquals("phone", GarminWatchMessages.fromLegacyCollector("phone", "watch03"));
+        assertEquals("none", GarminWatchMessages.fromLegacyCollector("none", "phone"));
     }
 }

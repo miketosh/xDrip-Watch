@@ -133,27 +133,23 @@ public class GarminBridge {
         }
     }
 
-    /** Tells the watch which side connects to the G7 ({@code collector} v1) and its slot ({@code slot} v1). */
+    /** Tells the watch the collector mode ({@code collector} v1; the mode carries the slot). */
     public static void sendCollector(Context context, StatusListener listener) {
-        send(context, GarminWatchMessages.collectorMessage(GarminWatchPreferences.collectorMode(),
-                GarminWatchPreferences.collectorChangedAtSeconds()), listener);
-        if (GarminWatchMessages.supportsField(watchFieldVersions, "slot.s", 2)
-                && GarminWatchMessages.supportsField(watchFieldVersions, "slot.ts", 2)) {
-            send(context, GarminWatchMessages.slotMessage(GarminWatchPreferences.slotChoice(),
-                    GarminWatchPreferences.slotChangedAtSeconds()), listener);
-        }
+        send(context, collectorMessage(), listener);
     }
 
     // The watch-message callback already runs after SDK initialization; it has
     // no Activity/Context argument, so echo through the initialized SDK directly.
     private static void sendCollectorToKnownDevices(StatusListener listener) {
-        sendToKnownDevices(GarminWatchMessages.collectorMessage(GarminWatchPreferences.collectorMode(),
-                GarminWatchPreferences.collectorChangedAtSeconds()), listener);
-        if (GarminWatchMessages.supportsField(watchFieldVersions, "slot.s", 2)
-                && GarminWatchMessages.supportsField(watchFieldVersions, "slot.ts", 2)) {
-            sendToKnownDevices(GarminWatchMessages.slotMessage(GarminWatchPreferences.slotChoice(),
-                    GarminWatchPreferences.slotChangedAtSeconds()), listener);
-        }
+        sendToKnownDevices(collectorMessage(), listener);
+    }
+
+    /** The mode, or the older value for a watch that has not advertised collector.c 2. */
+    private static Map<String, Object> collectorMessage() {
+        return GarminWatchMessages.collectorMessage(GarminWatchMessages.wireCollectorValue(
+                        GarminWatchPreferences.collectorMode(),
+                        GarminWatchMessages.supportsField(watchFieldVersions, "collector.c", 2)),
+                GarminWatchPreferences.collectorChangedAtSeconds());
     }
 
     /** Initializes the SDK if needed, then sends the message to every known watch. */
@@ -303,8 +299,7 @@ public class GarminBridge {
         sendToKnownDevices(GarminWatchMessages.capabilitiesMessage(true), listener);
         // This phone's choice, also when never changed (time 0): a fresh watch starts as the
         // collector and must learn that the phone collects (2026-10-26).
-        sendToKnownDevices(GarminWatchMessages.collectorMessage(GarminWatchPreferences.collectorMode(),
-                GarminWatchPreferences.collectorChangedAtSeconds()), listener);
+        sendToKnownDevices(collectorMessage(), listener);
     }
 
     /** Contract 6.3: store a reading only if the watch marked it reliable, in range, dated sensibly and new. */
@@ -321,10 +316,6 @@ public class GarminBridge {
             }
             if (GarminWatchMessages.COLLECTOR.equals(((Map<?, ?>) m).get("t"))) {
                 onWatchCollector((Map<?, ?>) m, listener);
-                continue;
-            }
-            if (GarminWatchMessages.SLOT.equals(((Map<?, ?>) m).get("t"))) {
-                onWatchSlot((Map<?, ?>) m, listener);
                 continue;
             }
             if (!GarminWatchMessages.GLUCOSE.equals(((Map<?, ?>) m).get("t"))) continue;
@@ -358,14 +349,11 @@ public class GarminBridge {
         if (GarminWatchMessages.wantsCapabilitiesReply(m)) {
             sendToKnownDevices(GarminWatchMessages.capabilitiesMessage(false), listener);
         }
-        if (GarminWatchMessages.supportsField(watchFieldVersions, "slot.s", 2)
-                && GarminWatchMessages.supportsField(watchFieldVersions, "slot.ts", 2)) {
-            sendToKnownDevices(GarminWatchMessages.slotMessage(GarminWatchPreferences.slotChoice(),
-                    GarminWatchPreferences.slotChangedAtSeconds()), listener);
-        }
+        // The watch may now be known to take the five modes: send the exact one.
+        sendCollectorToKnownDevices(listener);
     }
 
-    /** The watch's menu chose a collector: take it if newer, otherwise send ours back. */
+    /** The watch's menu chose a collector mode: take it if newer, otherwise send ours back. */
     private static void onWatchCollector(Map<?, ?> m, StatusListener listener) {
         final GarminWatchMessages.Collector c = GarminWatchMessages.parseCollector(m);
         if (c == null) {
@@ -373,47 +361,15 @@ public class GarminBridge {
             return;
         }
         if (!GarminWatchPreferences.isEnabled()) return;
+        final String current = GarminWatchPreferences.collectorMode();
+        final String wanted = GarminWatchMessages.fromLegacyCollector(c.mode, current);
         if (!GarminWatchMessages.replacesPhoneChoice(c, GarminWatchPreferences.collectorChangedAtSeconds())) {
-            if (!c.mode.equals(GarminWatchPreferences.collectorMode())) {
-                sendToKnownDevices(GarminWatchMessages.collectorMessage(GarminWatchPreferences.collectorMode(),
-                        GarminWatchPreferences.collectorChangedAtSeconds()), listener);
-            }
+            if (!wanted.equals(current)) sendCollectorToKnownDevices(listener);
             return;
         }
-        GarminWatchPreferences.setWatchCollector(c.watch, c.changedAtSeconds, "set on the watch");
-        GarminWatchPreferences.notifyCollector(c.watch, "set on the watch");
-        report(listener, "Watch set the G7 collector to " + (c.watch ? "the watch" : "the phone"));
-    }
-
-    /** The watch's menu chose a slot: newer timestamp wins; phone wins ties. */
-    private static void onWatchSlot(Map<?, ?> m, StatusListener listener) {
-        final GarminWatchMessages.Slot slot = GarminWatchMessages.parseSlot(m);
-        if (slot == null) {
-            report(listener, "Watch slot message rejected");
-            return;
-        }
-        if (!GarminWatchPreferences.isEnabled()) return;
-        final long phoneChangedAt = GarminWatchPreferences.slotChangedAtSeconds();
-        if (GarminWatchMessages.replacesPhoneSlot(slot, phoneChangedAt)) {
-            final boolean collectorChanged = GarminWatchPreferences.setWatchSlotChoice(
-                    slot.choice, slot.changedAtSeconds);
-            if (collectorChanged) {
-                GarminWatchPreferences.notifyCollector(
-                        !"phone".equals(GarminWatchPreferences.collectorMode()), "slot changed on watch");
-            }
-            report(listener, "Watch set G7 slot to " + slot.choice);
-            // Echo the accepted choice so both ends converge; include collector
-            // state too if leaving slot 03 disabled Dual collection.
-            sendCollectorToKnownDevices(listener);
-        } else if (slot.changedAtSeconds == phoneChangedAt &&
-                slot.choice.equals(GarminWatchPreferences.slotChoice())) {
-            // Already synchronized: echo anyway, the watch keeps its change
-            // pending (and resends it every 15 s) until it sees this choice.
-            sendCollectorToKnownDevices(listener);
-        } else {
-            // Phone is newer, or timestamps tie with a different value.
-            sendCollectorToKnownDevices(listener);
-        }
+        GarminWatchPreferences.setCollectorMode(wanted, c.changedAtSeconds, "set on the watch");
+        GarminWatchPreferences.notifyCollector(wanted, "set on the watch");
+        report(listener, "Watch set the G7 collector to " + GarminWatchPreferences.label(wanted));
     }
 
     private static void report(StatusListener listener, String line) {

@@ -233,34 +233,17 @@
                     android:switchTextOff="@string/short_off_text_for_switches"
                     android:switchTextOn="@string/short_on_text_for_switches"
                     android:title="@string/garmin_watch_integration" />
-                <SwitchPreference
-                    android:defaultValue="false"
-                    android:dependency="garmin_watch_enabled"
-                    android:key="garmin_watch_collector"
-                    android:summaryOff="@string/garmin_watch_collector_off"
-                    android:summaryOn="@string/garmin_watch_collector_on"
-                    android:switchTextOff="@string/short_off_text_for_switches"
-                    android:switchTextOn="@string/short_on_text_for_switches"
-                    android:title="@string/garmin_watch_collector" />
                 <ListPreference
-                    android:defaultValue="auto"
+                    android:defaultValue="phone"
                     android:dependency="garmin_watch_enabled"
-                    android:entries="@array/garmin_watch_slot_entries"
-                    android:entryValues="@array/garmin_watch_slot_values"
-                    android:key="garmin_watch_slot"
+                    android:entries="@array/garmin_watch_collector_mode_entries"
+                    android:entryValues="@array/garmin_watch_collector_mode_values"
+                    android:key="garmin_watch_collector_mode"
                     android:summary="%s"
-                    android:title="@string/garmin_watch_slot" />
+                    android:title="@string/garmin_watch_collector_mode" />
                 <SwitchPreference
                     android:defaultValue="false"
                     android:dependency="garmin_watch_enabled"
-                    android:key="garmin_watch_dual_collector"
-                    android:summary="@string/garmin_watch_dual_collector_summary"
-                    android:switchTextOff="@string/short_off_text_for_switches"
-                    android:switchTextOn="@string/short_on_text_for_switches"
-                    android:title="@string/garmin_watch_dual_collector" />
-                <SwitchPreference
-                    android:defaultValue="false"
-                    android:dependency="garmin_watch_collector"
                     android:key="garmin_watch_fallback"
                     android:summary="@string/garmin_watch_fallback_summary"
                     android:switchTextOff="@string/short_off_text_for_switches"

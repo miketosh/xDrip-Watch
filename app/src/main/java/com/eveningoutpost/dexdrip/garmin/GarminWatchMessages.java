@@ -21,11 +21,10 @@ public final class GarminWatchMessages {
     public static final String PUMP_STATUS = "pump_status";
     public static final String GLUCOSE = "glucose";
     public static final String COLLECTOR = "collector";
-    public static final String SLOT = "slot";
     public static final int VERSION = 1;
     // Field-level capabilities: slot fields are version 2 because older bridge
     // peers may understand collector v1 but not the later slot message.
-    private static final String LOCAL_FIELD_VERSIONS = "caps.t=1|caps.v=1|caps.f=1|caps.r=2|collector.t=1|collector.v=1|collector.c=1|collector.ts=1|slot.t=1|slot.v=1|slot.s=2|slot.ts=2|glucose.t=1|glucose.v=1|glucose.tx=1|glucose.sq=1|glucose.mg=1|glucose.st=1|glucose.rt=1|glucose.tr=1|glucose.rel=1";
+    private static final String LOCAL_FIELD_VERSIONS = "caps.t=1|caps.v=1|caps.f=1|caps.r=2|collector.t=1|collector.v=1|collector.c=2|collector.ts=1|glucose.t=1|glucose.v=1|glucose.tx=1|glucose.sq=1|glucose.mg=1|glucose.st=1|glucose.rt=1|glucose.tr=1|glucose.rel=1";
 
     /** Advertise maximum supported versions for individual fields (flat string for Connect IQ v1). */
     public static Map<String, Object> capabilitiesMessage() {
@@ -74,7 +73,34 @@ public final class GarminWatchMessages {
                 && ((String) m.get("f")).length() <= 512;
     }
 
-    /** Which side connects to the G7 ("watch", "phone" or "both"), and when that was chosen (epoch seconds). */
+    /**
+     * Collector mode values (owner, 2026-10-30), field collector.c version 2: "none", "phone",
+     * "watch02", "watch03", "dual". A peer without version 2 sends and expects the older
+     * "watch", "phone" and "both" (see wireCollectorValue / fromLegacyCollector).
+     */
+    public static boolean isCollectorMode(@Nullable Object value) {
+        return "none".equals(value) || "phone".equals(value) || "watch02".equals(value)
+                || "watch03".equals(value) || "dual".equals(value);
+    }
+
+    /** The value to send: the mode itself, or the older value for a peer without collector.c 2. */
+    public static String wireCollectorValue(String mode, boolean peerKnowsModes) {
+        if (peerKnowsModes) return mode;
+        if ("dual".equals(mode)) return "both";
+        return "watch02".equals(mode) || "watch03".equals(mode) ? "watch" : "phone";
+    }
+
+    /** A received value as a mode; an older "watch" keeps the current watch slot, else 03. */
+    public static String fromLegacyCollector(String value, String currentMode) {
+        if (isCollectorMode(value)) return value;
+        if ("both".equals(value)) return "dual";
+        if ("watch".equals(value)) {
+            return "watch02".equals(currentMode) || "watch03".equals(currentMode) ? currentMode : "watch03";
+        }
+        return "phone";
+    }
+
+    /** Who connects to the G7 (a mode or an older value), and when that was chosen (epoch seconds). */
     public static final class Collector {
         public final String mode;
         public final boolean watch;
@@ -82,19 +108,19 @@ public final class GarminWatchMessages {
 
         Collector(String mode, long changedAtSeconds) {
             this.mode = mode;
-            this.watch = !"phone".equals(mode);
+            this.watch = !"phone".equals(mode) && !"none".equals(mode);
             this.changedAtSeconds = changedAtSeconds;
         }
     }
 
-    /** Both directions: {@code {t: "collector", v: 1, c: "watch"|"phone"|"both", ts}}; null if malformed. */
+    /** Both directions: {@code {t: "collector", v: 1, c: <mode or older value>, ts}}; null if malformed. */
     @Nullable
     public static Collector parseCollector(@Nullable Map<?, ?> m) {
         if (m == null || !COLLECTOR.equals(m.get("t"))) return null;
         if (!Integer.valueOf(VERSION).equals(asInt(m.get("v")))) return null;
         final Object c = m.get("c");
         final Integer ts = asInt(m.get("ts"));
-        if (ts == null || ts < 0 || !("watch".equals(c) || "phone".equals(c) || "both".equals(c))) return null;
+        if (ts == null || ts < 0 || !(isCollectorMode(c) || "watch".equals(c) || "both".equals(c))) return null;
         return new Collector((String) c, ts);
     }
 
@@ -107,48 +133,8 @@ public final class GarminWatchMessages {
         return m;
     }
 
-    /** Versioned G7 slot preference, exchanged in both directions. */
-    public static final class Slot {
-        public final String choice;
-        public final long changedAtSeconds;
-
-        Slot(String choice, long changedAtSeconds) {
-            this.choice = choice;
-            this.changedAtSeconds = changedAtSeconds;
-        }
-    }
-
-    /** Both directions: {t: "slot", v: 1, s: "auto"|"02"|"03", ts}. */
-    @Nullable
-    public static Slot parseSlot(@Nullable Map<?, ?> m) {
-        if (m == null || !SLOT.equals(m.get("t"))) return null;
-        if (!Integer.valueOf(VERSION).equals(asInt(m.get("v")))) return null;
-        final Object s = m.get("s");
-        final Integer ts = asInt(m.get("ts"));
-        if (ts == null || ts < 0 || !("auto".equals(s) || "02".equals(s) || "03".equals(s))) return null;
-        return new Slot((String) s, ts);
-    }
-
-    public static Map<String, Object> slotMessage(String choice) {
-        return slotMessage(choice, 0);
-    }
-
-    public static Map<String, Object> slotMessage(String choice, long changedAtSeconds) {
-        final Map<String, Object> m = new HashMap<>();
-        m.put("t", SLOT);
-        m.put("v", VERSION);
-        m.put("s", "02".equals(choice) || "03".equals(choice) ? choice : "auto");
-        m.put("ts", (int) Math.max(0, changedAtSeconds));
-        return m;
-    }
-
     /** The newer choice wins; on a tie the phone keeps its own (the watch then takes the phone's). */
     public static boolean replacesPhoneChoice(Collector fromWatch, long phoneChangedAtSeconds) {
-        return fromWatch.changedAtSeconds > phoneChangedAtSeconds;
-    }
-
-    /** Phone keeps its slot choice on a timestamp tie, just as it does for collector v1. */
-    public static boolean replacesPhoneSlot(Slot fromWatch, long phoneChangedAtSeconds) {
         return fromWatch.changedAtSeconds > phoneChangedAtSeconds;
     }
 
