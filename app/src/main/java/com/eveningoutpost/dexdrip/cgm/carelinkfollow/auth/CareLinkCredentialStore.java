@@ -3,7 +3,18 @@ package com.eveningoutpost.dexdrip.cgm.carelinkfollow.auth;
 
 import com.eveningoutpost.dexdrip.models.UserError;
 import com.eveningoutpost.dexdrip.utilitymodels.PersistentStore;
+import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonSyntaxException;
+import com.google.gson.TypeAdapter;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonToken;
+import com.google.gson.stream.JsonWriter;
+
+import java.io.IOException;
+import java.text.DateFormat;
+import java.text.ParsePosition;
+import java.util.Locale;
 
 import java.util.Calendar;
 import java.util.Date;
@@ -30,6 +41,54 @@ public class CareLinkCredentialStore {
 
     }
 
+    /**
+     * Reads the legacy Gson Date strings already persisted by released xDrip
+     * builds. Gson's default Date adapter changed behavior on newer runtimes;
+     * losing this parse silently discards a user's CareLink login on restore.
+     * The old format is localized, so try the current device locale first and
+     * the historical US format second, using the device's current timezone.
+     */
+    static Gson gson() {
+        return new GsonBuilder().registerTypeAdapter(Date.class, new TypeAdapter<Date>() {
+            @Override
+            public void write(JsonWriter out, Date value) throws IOException {
+                if (value == null) {
+                    out.nullValue();
+                    return;
+                }
+                DateFormat format = DateFormat.getDateTimeInstance(
+                        DateFormat.DEFAULT, DateFormat.DEFAULT, Locale.getDefault());
+                out.value(format.format(value));
+            }
+
+            @Override
+            public Date read(JsonReader in) throws IOException {
+                final JsonToken token = in.peek();
+                if (token == JsonToken.NULL) {
+                    in.nextNull();
+                    return null;
+                }
+                if (token == JsonToken.NUMBER) {
+                    return new Date(in.nextLong());
+                }
+
+                final String text = in.nextString();
+                final Locale[] locales = {Locale.getDefault(), Locale.US};
+                for (Locale locale : locales) {
+                    final DateFormat format = DateFormat.getDateTimeInstance(
+                            DateFormat.DEFAULT, DateFormat.DEFAULT, locale);
+                    format.setLenient(false);
+                    final ParsePosition position = new ParsePosition(0);
+                    final Date parsed = format.parse(text, position);
+                    if (parsed != null && position.getIndex() == text.length()) {
+                        return parsed;
+                    }
+                }
+                throw new JsonSyntaxException("Invalid persisted CareLink date: " + text);
+            }
+        }).create();
+    }
+
     public static CareLinkCredentialStore getInstance() {
         if (instance == null) {
             instance = new CareLinkCredentialStore();
@@ -37,7 +96,7 @@ public class CareLinkCredentialStore {
             String credJson = PersistentStore.getString(PREF_CARELINK_CREDENTIAL, "");
             if (!credJson.equals("")) {
                 try {
-                    CareLinkCredential savedCred = new GsonBuilder().create().fromJson(credJson, CareLinkCredential.class);
+                    CareLinkCredential savedCred = gson().fromJson(credJson, CareLinkCredential.class);
                     instance.setCredential(savedCred.country, savedCred.authType, savedCred.accessToken, savedCred.accessValidTo, savedCred.refreshValidTo, savedCred.cookies,
                             savedCred.androidModel, savedCred.clientId, savedCred.clientSecret, savedCred.refreshToken, false);
                 } catch (Exception e) {
@@ -87,7 +146,7 @@ public class CareLinkCredentialStore {
         UserError.Log.d(TAG, "Credential updated!");
         if (save) {
             try {
-                PersistentStore.setString(PREF_CARELINK_CREDENTIAL, new GsonBuilder().create().toJson(credential));
+                PersistentStore.setString(PREF_CARELINK_CREDENTIAL, gson().toJson(credential));
                 UserError.Log.d(TAG, "Credential saved!");
             } catch (Exception e) {
                 UserError.Log.d(TAG, "Error saving Credential:  " + e.getMessage());

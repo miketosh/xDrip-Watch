@@ -2,7 +2,6 @@ package com.eveningoutpost.dexdrip.cgm.carelinkfollow.auth;
 
 import com.eveningoutpost.dexdrip.RobolectricTestWithConfig;
 import com.eveningoutpost.dexdrip.utilitymodels.PersistentStore;
-import com.google.gson.GsonBuilder;
 
 import org.junit.Test;
 
@@ -44,7 +43,7 @@ public class CareLinkCredentialStoreTest extends RobolectricTestWithConfig {
         try {
             // :: Act
             final CareLinkCredential credential =
-                    new GsonBuilder().create().fromJson(oldGsonJson, CareLinkCredential.class);
+                    CareLinkCredentialStore.gson().fromJson(oldGsonJson, CareLinkCredential.class);
 
             // :: Verify
             assertThat(credential.accessValidTo.getTime()).isEqualTo(1_700_000_000_000L);
@@ -71,7 +70,7 @@ public class CareLinkCredentialStoreTest extends RobolectricTestWithConfig {
         // :: Act
         store.setBrowserCredential("no", "test-access-token-2", accessValidTo, refreshValidTo, null);
         final String savedJson = PersistentStore.getString(PREF_CARELINK_CREDENTIAL, "");
-        final CareLinkCredential reloaded = new GsonBuilder().create().fromJson(savedJson, CareLinkCredential.class);
+        final CareLinkCredential reloaded = CareLinkCredentialStore.gson().fromJson(savedJson, CareLinkCredential.class);
 
         // :: Verify
         assertThat(reloaded.accessValidTo.getTime()).isEqualTo(1_700_100_000_000L);
