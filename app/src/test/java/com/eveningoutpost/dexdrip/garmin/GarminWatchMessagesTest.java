@@ -27,6 +27,8 @@ public class GarminWatchMessagesTest {
         assertTrue(GarminWatchMessages.isCapabilitiesMessage(caps));
         final String fields = (String) caps.get("f");
         assertTrue(GarminWatchMessages.supportsField("|" + fields + "|", "slot.s", 2));
+        assertTrue(fields.contains("glucose.rel=1"));
+        assertFalse(fields.contains("pump_status.t"));
         assertFalse(GarminWatchMessages.supportsField(null, "slot.s", 2));
         assertTrue(GarminWatchMessages.supportsField(null, "glucose.mg", 1));
         assertFalse(GarminWatchMessages.supportsField("|slot.s=1|", "slot.s", 2));
