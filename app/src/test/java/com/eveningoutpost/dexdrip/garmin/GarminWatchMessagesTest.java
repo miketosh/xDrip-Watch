@@ -255,10 +255,36 @@ public class GarminWatchMessagesTest {
     }
 
     @Test
-    public void slotMessageCarriesOnlyKnownChoices() {
-        assertEquals("03", GarminWatchMessages.slotMessage("03").get("s"));
-        assertEquals("02", GarminWatchMessages.slotMessage("02").get("s"));
-        assertEquals("auto", GarminWatchMessages.slotMessage("04").get("s"));
-        assertEquals("slot", GarminWatchMessages.slotMessage("auto").get("t"));
+    public void slotMessageCarriesChoiceAndTimestamp() {
+        final Map<String, Object> message = GarminWatchMessages.slotMessage("03", NOW_S);
+        assertEquals("03", message.get("s"));
+        assertEquals(NOW_S, message.get("ts"));
+        assertEquals("slot", message.get("t"));
+        assertEquals(1, message.get("v"));
+        assertEquals("02", GarminWatchMessages.slotMessage("02", NOW_S).get("s"));
+        assertEquals("auto", GarminWatchMessages.slotMessage("04", NOW_S).get("s"));
+    }
+
+    @Test
+    public void slotRoundTripsAndRejectsMalformedMessages() {
+        final GarminWatchMessages.Slot parsed = GarminWatchMessages.parseSlot(
+                GarminWatchMessages.slotMessage("03", NOW_S));
+        assertNotNull(parsed);
+        assertEquals("03", parsed.choice);
+        assertEquals(NOW_S, parsed.changedAtSeconds);
+        assertNull(GarminWatchMessages.parseSlot(GarminWatchMessages.slotMessage("03", -1)));
+        final Map<String, Object> invalid = GarminWatchMessages.slotMessage("03", NOW_S);
+        invalid.put("s", "04");
+        assertNull(GarminWatchMessages.parseSlot(invalid));
+    }
+
+    @Test
+    public void phoneWinsSlotTimestampTiesAndNewerWatchChoiceWins() {
+        final GarminWatchMessages.Slot newer = GarminWatchMessages.parseSlot(
+                GarminWatchMessages.slotMessage("02", NOW_S + 1));
+        final GarminWatchMessages.Slot tied = GarminWatchMessages.parseSlot(
+                GarminWatchMessages.slotMessage("02", NOW_S));
+        assertTrue(GarminWatchMessages.replacesPhoneSlot(newer, NOW_S));
+        assertFalse(GarminWatchMessages.replacesPhoneSlot(tied, NOW_S));
     }
 }
