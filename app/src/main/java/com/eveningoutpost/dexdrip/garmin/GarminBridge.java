@@ -407,7 +407,7 @@ public class GarminBridge {
             // Already synchronized.
         } else {
             // Phone is newer, or timestamps tie with a different value.
-            sendCollector(xdrip.getAppContext(), listener);
+            sendCollectorToKnownDevices(listener);
         }
     }
 
