@@ -14,6 +14,7 @@ import com.google.gson.stream.JsonWriter;
 import java.io.IOException;
 import java.text.DateFormat;
 import java.text.ParsePosition;
+import java.text.SimpleDateFormat;
 import java.util.Locale;
 
 import java.util.Calendar;
@@ -83,6 +84,19 @@ public class CareLinkCredentialStore {
                     if (parsed != null && position.getIndex() == text.length()) {
                         return parsed;
                     }
+                }
+
+                // Gson 2.9's English-US MEDIUM date/time format persisted as
+                // "Nov 14, 2023, 11:13:20 PM". Keep this exact historical wire
+                // format readable even when the current runtime's locale data
+                // or default style pattern has changed.
+                final SimpleDateFormat legacyUs = new SimpleDateFormat(
+                        "MMM d, yyyy, h:mm:ss a", Locale.US);
+                legacyUs.setLenient(false);
+                final ParsePosition legacyPosition = new ParsePosition(0);
+                final Date legacyParsed = legacyUs.parse(text, legacyPosition);
+                if (legacyParsed != null && legacyPosition.getIndex() == text.length()) {
+                    return legacyParsed;
                 }
                 throw new JsonSyntaxException("Invalid persisted CareLink date: " + text);
             }
