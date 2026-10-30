@@ -39,7 +39,17 @@ public final class GarminWatchMessages {
     /** Exact field-version lookup; unknown peers default to established v1 fields only. */
     public static boolean supportsField(@Nullable String fields, String field, int requiredVersion) {
         if (fields == null || fields.isEmpty()) return requiredVersion <= 1;
-        return fields.contains("|" + field + "=" + requiredVersion + "|");
+        final String prefix = "|" + field + "=";
+        final int start = fields.indexOf(prefix);
+        if (start < 0) return false;
+        final int valueStart = start + prefix.length();
+        final int end = fields.indexOf('|', valueStart);
+        if (end < 0 || end == valueStart) return false;
+        try {
+            return Integer.parseInt(fields.substring(valueStart, end)) >= requiredVersion;
+        } catch (NumberFormatException e) {
+            return false;
+        }
     }
 
     public static boolean isCapabilitiesMessage(@Nullable Map<?, ?> m) {
