@@ -353,6 +353,10 @@ public class GarminBridge {
         if (GarminWatchMessages.replacesPhoneSlot(slot, phoneChangedAt)) {
             final boolean collectorChanged = GarminWatchPreferences.setWatchSlotChoice(
                     slot.choice, slot.changedAtSeconds);
+            if (collectorChanged) {
+                GarminWatchPreferences.notifyCollector(
+                        !"phone".equals(GarminWatchPreferences.collectorMode()), "slot changed on watch");
+            }
             report(listener, "Watch set G7 slot to " + slot.choice);
             // Echo the accepted choice so both ends converge; include collector
             // state too if leaving slot 03 disabled Dual collection.
