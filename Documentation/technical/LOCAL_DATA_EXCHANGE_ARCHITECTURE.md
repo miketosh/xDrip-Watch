@@ -169,7 +169,7 @@ Sent once per new G7 reading (new sequence), via Connect IQ `Communications.tran
 
 ## Slot preference synchronization implementation note — 2026-10-29
 
-- Watch menu changes now send `slot` v1 to xDrip with a persisted timestamp; pending watch changes are retried when the phone bridge starts.
+- Watch menu changes now send `slot` v1 to xDrip with a persisted timestamp; the watch keeps the change pending until xDrip echoes its accepted choice and retries every 15 seconds while the app is active if no echo arrives.
 - xDrip accepts a newer watch-originated choice, stores it, and sends its current slot and collector settings back. Phone-side slot preference changes publish the same timestamped message to the watch.
 - Equal timestamps with conflicting values resolve to the phone's value, matching collector v1. The slot preference remains separate from collector ownership, except that selecting anything other than `03` disables Dual collection.
 - Automated test coverage verifies slot message parsing, timestamp round-tripping, invalid values, and tie/newer-choice policy. Physical phone/watch synchronization and actual G7 slot acceptance remain unverified.
