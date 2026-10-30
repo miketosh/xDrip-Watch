@@ -4,7 +4,7 @@ A self-contained module meant to be offered back to xDrip: everything is in `com
 
 ## What it does
 
-The [G7 Scout](https://github.com/miketosh/garmin7-scout) Connect IQ app on a Garmin watch reads a Dexcom G7 directly over Bluetooth. This module connects it to xDrip through Garmin Connect (Connect IQ companion SDK `com.garmin.connectiq:ciq-companion-app-sdk`):
+The [G7 Scout](https://github.com/miketosh/garmin7-scout) Connect IQ app on a Garmin watch reads a Dexcom G7 directly over Bluetooth. Its public testing build, [Garmin7-Connector](https://github.com/miketosh/Garmin7-Connector), has a different Connect IQ app ID and speaks the same messages: xDrip listens to both and sends to the app(s) that have messaged it, or to G7 Scout before either has (2026-10-30). This module connects it to xDrip through Garmin Connect (Connect IQ companion SDK `com.garmin.connectiq:ciq-companion-app-sdk`):
 
 - **Watch → phone:** each reading the watch accepts arrives as a `glucose` v1 message (fields below). xDrip stores it only if the watch marked it reliable, it is 40-400 mg/dL, dated within the last 24 h and not in the future, and new for that sensor and sequence. Stored readings appear in xDrip's screens, alerts, uploads and local web service like any CGM reading (`source_info` contains "Garmin watch"). Nothing is sent back to the watch.
 - **Phone → watch:** "Send G7 key to watch" sends the G7 key xDrip saved after pairing, so the watch can log in to the sensor without running the pairing itself (the Bluetooth timing of the watch link is too slow for the G7's pairing rounds).

@@ -59,7 +59,7 @@ public class GarminBridgeTestActivity extends Activity {
         final ScrollView scroll = new ScrollView(this);
         scroll.addView(layout);
         setContentView(scroll);
-        append("Garmin bridge test, watch app " + GarminBridge.WATCH_APP_ID);
+        append("Garmin bridge test, watch apps " + GarminWatchPreferences.watchAppTargets());
         GarminBridge.sendTestMessage(this, this::post);
     }
 

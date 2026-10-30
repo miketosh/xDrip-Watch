@@ -37,6 +37,22 @@ public class GarminWatchMessagesTest {
     }
 
     @Test
+    public void messagesGoToTheWatchAppsHeardFromElseScout() {
+        // Nothing heard yet: G7 Scout, as before 2026-10-30.
+        assertEquals(java.util.Collections.singletonList(GarminWatchMessages.SCOUT_APP_ID), GarminWatchMessages.sendTargets(null));
+        assertEquals(java.util.Collections.singletonList(GarminWatchMessages.SCOUT_APP_ID), GarminWatchMessages.sendTargets(""));
+        // Garmin7-Connector spoke: only it.
+        final String heard = GarminWatchMessages.addHeardApp("", GarminWatchMessages.CONNECTOR_APP_ID.toUpperCase());
+        assertEquals(GarminWatchMessages.CONNECTOR_APP_ID, heard);
+        assertEquals(java.util.Collections.singletonList(GarminWatchMessages.CONNECTOR_APP_ID), GarminWatchMessages.sendTargets(heard));
+        // Both installed and heard: both, each once; unknown IDs ignored.
+        final String both = GarminWatchMessages.addHeardApp(GarminWatchMessages.addHeardApp(heard, GarminWatchMessages.SCOUT_APP_ID), GarminWatchMessages.SCOUT_APP_ID);
+        assertEquals(2, GarminWatchMessages.sendTargets(both).size());
+        assertEquals(both, GarminWatchMessages.addHeardApp(both, "0123456789abcdef0123456789abcdef"));
+        assertEquals(java.util.Collections.singletonList(GarminWatchMessages.SCOUT_APP_ID), GarminWatchMessages.sendTargets("bogus"));
+    }
+
+    @Test
     public void capabilitiesCanAskForAReplyOnce() {
         final Map<String, Object> ask = GarminWatchMessages.capabilitiesMessage(true);
         assertTrue(GarminWatchMessages.isCapabilitiesMessage(ask));

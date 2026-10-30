@@ -2,8 +2,10 @@ package com.eveningoutpost.dexdrip.garmin;
 
 import androidx.annotation.Nullable;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -19,6 +21,50 @@ public final class GarminWatchMessages {
     public static final String GLUCOSE = "glucose";
     public static final String COLLECTOR = "collector";
     public static final int VERSION = 1;
+
+    /**
+     * Connect IQ app IDs of the watch apps that speak these messages: G7 Scout (development,
+     * github.com/miketosh/garmin7-scout) and Garmin7-Connector (public testing,
+     * github.com/miketosh/Garmin7-Connector). xDrip listens to both and sends to those it has heard
+     * from, or to G7 Scout's before any watch app has spoken (2026-10-30).
+     */
+    public static final String SCOUT_APP_ID = "8d8a5d1f6b4a4f5fa8d3a7f0d2c9b641";
+    public static final String CONNECTOR_APP_ID = "c47a6e2d93b54f2aa1f608c4d9e73b51";
+    public static final String[] WATCH_APP_IDS = {SCOUT_APP_ID, CONNECTOR_APP_ID};
+
+    /** Adds a watch app to the comma-separated list of apps heard from; unknown IDs are ignored. */
+    public static String addHeardApp(@Nullable String heard, @Nullable String appId) {
+        final List<String> apps = heardApps(heard);
+        if (appId != null) {
+            for (final String known : WATCH_APP_IDS) {
+                if (known.equalsIgnoreCase(appId) && !apps.contains(known)) apps.add(known);
+            }
+        }
+        final StringBuilder out = new StringBuilder();
+        for (final String app : apps) {
+            if (out.length() > 0) out.append(",");
+            out.append(app);
+        }
+        return out.toString();
+    }
+
+    /** The watch apps to send to: those heard from, else G7 Scout's. */
+    public static List<String> sendTargets(@Nullable String heard) {
+        final List<String> apps = heardApps(heard);
+        if (apps.isEmpty()) apps.add(SCOUT_APP_ID);
+        return apps;
+    }
+
+    private static List<String> heardApps(@Nullable String heard) {
+        final List<String> apps = new ArrayList<>();
+        if (heard == null) return apps;
+        for (final String part : heard.split(",")) {
+            for (final String known : WATCH_APP_IDS) {
+                if (known.equalsIgnoreCase(part.trim()) && !apps.contains(known)) apps.add(known);
+            }
+        }
+        return apps;
+    }
     // Field-level capabilities: slot fields are version 2 because older bridge
     // peers may understand collector v1 but not the later slot message.
     private static final String LOCAL_FIELD_VERSIONS = "caps.t=1|caps.v=1|caps.f=1|caps.r=2|collector.t=1|collector.v=1|collector.c=2|collector.ts=1|glucose.t=1|glucose.v=1|glucose.tx=1|glucose.sq=1|glucose.mg=1|glucose.st=1|glucose.rt=1|glucose.tr=1|glucose.rel=1";

@@ -50,11 +50,27 @@ public final class GarminWatchPreferences {
     /** When the collector mode last changed (epoch seconds), here or on the watch. */
     private static final String STORE_COLLECTOR_CHANGED = "garmin_watch_collector_changed";
     private static final int NOTIFICATION_ID = 7713;
+    /** Watch apps that have messaged this phone (GarminWatchMessages.WATCH_APP_IDS, comma-separated). */
+    private static final String STORE_HEARD_APPS = "garmin_watch_heard_apps";
     /** Action: send this phone's saved G7 key to the watch. */
     public static final String PREF_SEND_KEY = "garmin_watch_send_key";
 
     public static boolean isEnabled() {
         return Pref.getBooleanDefaultFalse(PREF_ENABLED);
+    }
+
+    /** The watch apps to message: those heard from, else G7 Scout. */
+    public static java.util.List<String> watchAppTargets() {
+        return GarminWatchMessages.sendTargets(PersistentStore.getString(STORE_HEARD_APPS));
+    }
+
+    /** Remembers a watch app that messaged this phone; true if it was new. */
+    public static boolean noteWatchApp(String appId) {
+        final String before = PersistentStore.getString(STORE_HEARD_APPS);
+        final String after = GarminWatchMessages.addHeardApp(before, appId);
+        if (after.equals(before)) return false;
+        PersistentStore.setString(STORE_HEARD_APPS, after);
+        return true;
     }
 
     /** The collector mode; settings from before 2026-10-30 are converted the first time. */
