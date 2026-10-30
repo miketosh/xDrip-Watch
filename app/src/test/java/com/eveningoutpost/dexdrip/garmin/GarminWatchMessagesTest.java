@@ -30,6 +30,8 @@ public class GarminWatchMessagesTest {
         assertFalse(GarminWatchMessages.supportsField(null, "slot.s", 2));
         assertTrue(GarminWatchMessages.supportsField(null, "glucose.mg", 1));
         assertFalse(GarminWatchMessages.supportsField("|slot.s=1|", "slot.s", 2));
+        assertFalse(GarminWatchMessages.supportsField(null, "key.name", 2));
+        assertFalse(GarminWatchMessages.supportsField(null, "pump_status.t", 2));
     }
 
     @Test
