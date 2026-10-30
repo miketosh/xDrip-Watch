@@ -83,7 +83,7 @@ public class GarminBridge {
         // see Bluetooth addresses). Left out if Android does not know the name.
         final String mac = Ob1G5CollectionService.getKeksKeyMacForBridge();
         final String name = sensorName(mac);
-        if (name != null) message.put("name", name);
+        if (name != null && GarminWatchMessages.supportsField(watchFieldVersions, "key.name", 2)) message.put("name", name);
         report(listener, "Sending saved G7 key #" + keyPrint(key) + " for sensor " + (name != null ? name : "(name unknown)")
                 + " " + mac + ", transmitter " + Ob1G5CollectionService.getTransmitterID());
         send(context, message, listener);
