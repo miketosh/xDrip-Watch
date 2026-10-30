@@ -42,7 +42,7 @@ See the [Garmin bridge design notes](https://github.com/miketosh/garmin7-scout/b
 - `wear/src/test/` contains tests for the legacy Android Wear module. These tests are not the Garmin Connect IQ app tests.
 - `GarminBridgeTestActivity` is a manual test UI in `app/src/main`, not a test under `app/src/test`.
 - Garmin Connect IQ host/simulator and physical-watch tests belong in the separate `garmin7-scout` repository.
-- No Tandem-specific unit/instrumentation tests were found in the inspected `garmin-bridge` tree.
+- Tandem-specific host unit tests are present under `app/src/test/java/com/eveningoutpost/dexdrip/tandem/`: `TandemX2StatusMapperTest`, `TandemX2RequestPolicyTest`, and `TandemX2BolusTest`. These are JVM unit tests, not Android instrumentation tests or live-pump validation.
 
 The checked-in `.github/workflows/unit_test.yml` workflow is named “Unit Test”. It runs on pushes to `master` and `garmin-bridge`, and on pull requests targeting `master`; the job uses Temurin JDK 21 and runs `assembleProdRelease testProdReleaseUnitTest`. The branch push trigger was added in commit `f124f40`; the Java 21/Temurin environment and Robolectric/Byte Buddy compatibility follow-ups are recorded in commits `83de511`, `cd39f25`, and `5f72f15`. The successful `garmin-bridge` run #20 is recorded in section 12.
 
