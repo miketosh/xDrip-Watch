@@ -144,6 +144,26 @@ Sent once per new G7 reading (new sequence), via Connect IQ `Communications.tran
 
 **Implemented on the phone (2026-10-25):** `garmin/GarminWatchMessages` builds `pump_status` and parses/deduplicates `glucose` exactly as above; `GarminWatchMessagesTest` (15 tests) covers both. `GarminBridge.sendPumpStatus` sends it; the Tandem test screen has a "Send pump status to watch" button. **Watch → phone built (2026-10-25, Claude Code - garmin7-scout-watch-integrator, at the owner's request after the xDrip-Watch session stopped):** garmin7-scout `ScoutGlucoseSender` sends one `glucose` v1 message per new accepted reading (`Communications.transmit`). `GarminBridge.startListening` (started 5 s after launch in `.garminbridge` dev builds, and from the bridge test screen's "Listen for watch glucose") registers for the watch app's events, applies `parseGlucose` and `Deduper`, and stores accepted readings with `BgReading.bgReadingInsertFromG5(mg, st, "Garmin watch")`, which needs a started sensor in xDrip. xDrip's screens, alerts and local web service (read by phone-fed Garmin faces and widgets) then show it. No glucose echo or pump-status response is sent back to the watch; separate phone→watch control/configuration messages (`key`, `collector`, `slot`) are independent. **Not implemented:** the watch-side `pump_status` receiver; not verified on hardware.
 
+### 6.1 Per-field capability negotiation (implemented 2026-10-29/30)
+
+The Garmin Connect phone-message transport has two independent version layers:
+
+- Every message retains its top-level `v` wire version. The current message types use wire version 1. A receiver rejects an unsupported top-level message version.
+- Each side sends `{t: "caps", v: 1, f: "..."}`. The `f` string is a pipe-delimited list of `message.field=maximum-supported-version` entries. Capabilities are directional: the phone advertises what it can receive; the watch advertises what it can receive. A receiver advertising field version 3 can accept fields requiring version 2.
+- A sender includes an optional field only when the peer has advertised a sufficient version. A peer that has not sent valid capabilities is treated as supporting only established version-1 fields. It must not receive newly introduced fields or message types.
+- The message type and wire-version fields are also advertised (for example `glucose.t=1`, `glucose.v=1`) so future type/version evolution can be explicit. Capability exchange is not a delivery acknowledgement.
+
+Current negotiated fields and gates:
+
+| Direction | Message.field | Required version | Current behavior |
+|---|---|---:|---|
+| Watch → phone | `glucose.alg`, `glucose.do`, `glucose.pr` | 2 | Omitted unless phone advertises v2; current phone receiver does not advertise them |
+| Phone → watch | `key.name` | 2 | Sensor name is omitted for older watches; key transfer remains compatible |
+| Phone ↔ watch | `slot.s`, `slot.ts` | 2 | Slot preference is withheld until peer advertises both fields |
+| Phone → watch | `pump_status.t`, `pump_status.v` | 2 | Not sent until watch advertises a pump-status receiver; current watch does not |
+
+The established glucose fields (`tx`, `sq`, `mg`, `st`, `rt`, `tr`, `rel`), collector fields, key fields, and ping fields remain version 1. Add new fields to the receiver's capability list only after implementing and testing the receiver. Treat advertised numbers as maximum supported versions, not exact version equality.
+
 ## 7. Data semantics and safety
 
 - **IOB:** use an explicitly decoded pump-reported value where verified. Do not substitute xDrip's insulin-action model without clearly marking it as a separate estimate.
