@@ -272,7 +272,9 @@ public class GarminWatchMessagesTest {
         assertNotNull(parsed);
         assertEquals("03", parsed.choice);
         assertEquals(NOW_S, parsed.changedAtSeconds);
-        assertNull(GarminWatchMessages.parseSlot(GarminWatchMessages.slotMessage("03", -1)));
+        final Map<String, Object> invalidTime = GarminWatchMessages.slotMessage("03", NOW_S);
+        invalidTime.put("ts", -1);
+        assertNull(GarminWatchMessages.parseSlot(invalidTime));
         final Map<String, Object> invalid = GarminWatchMessages.slotMessage("03", NOW_S);
         invalid.put("s", "04");
         assertNull(GarminWatchMessages.parseSlot(invalid));
