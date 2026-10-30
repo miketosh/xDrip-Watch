@@ -92,15 +92,6 @@ public final class GarminWatchMessages {
         return m;
     }
 
-    /** Both directions: shared slot choice and change timestamp, {@code {t: "slot", v: 1, s, ts}}. */
-    public static Map<String, Object> slotMessage(String choice) {
-        final Map<String, Object> m = new HashMap<>();
-        m.put("t", SLOT);
-        m.put("v", VERSION);
-        m.put("s", "02".equals(choice) || "03".equals(choice) ? choice : "auto");
-        return m;
-    }
-
     /** Versioned G7 slot preference, exchanged in both directions. */
     public static final class Slot {
         public final String choice;
