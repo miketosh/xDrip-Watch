@@ -95,6 +95,13 @@ public class GarminBridge {
      */
     public static void sendPumpStatus(Context context, Map<String, Object> message, StatusListener listener) {
         if (!GarminWatchMessages.PUMP_STATUS.equals(message.get("t"))) return;
+        // The watch currently has no pump_status receiver. Require an explicit
+        // version-2 capability before sending this still-planned message type.
+        if (!GarminWatchMessages.supportsField(watchFieldVersions, "pump_status.t", 2)
+                || !GarminWatchMessages.supportsField(watchFieldVersions, "pump_status.v", 2)) {
+            report(listener, "Watch does not advertise pump_status support");
+            return;
+        }
         report(listener, "Sending pump_status (" + message.size() + " fields)");
         send(context, message, listener);
     }
