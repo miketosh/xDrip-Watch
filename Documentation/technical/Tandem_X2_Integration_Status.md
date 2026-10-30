@@ -44,7 +44,7 @@ See the [Garmin bridge design notes](https://github.com/miketosh/garmin7-scout/b
 - Garmin Connect IQ host/simulator and physical-watch tests belong in the separate `garmin7-scout` repository.
 - No Tandem-specific unit/instrumentation tests were found in the inspected `garmin-bridge` tree.
 
-The checked-in `.github/workflows/unit_test.yml` workflow is named “Unit Test” and runs `assembleProdRelease testProdReleaseUnitTest` for pushes and pull requests targeting `master`. Confirm CI trigger coverage and task names before relying on this workflow for future work on `garmin-bridge`.
+The checked-in `.github/workflows/unit_test.yml` workflow is named “Unit Test”. It runs on pushes to `master` and `garmin-bridge`, and on pull requests targeting `master`; the job uses Temurin JDK 21 and runs `assembleProdRelease testProdReleaseUnitTest`. The branch push trigger was added in commit `f124f40`; the Java 21/Temurin environment and Robolectric/Byte Buddy compatibility follow-ups are recorded in commits `83de511`, `cd39f25`, and `5f72f15`. The successful `garmin-bridge` run #20 is recorded in section 12.
 
 ## 5. Tandem implementation inventory
 
@@ -167,3 +167,13 @@ Claude Code session `garmin7-scout-0a` (xDrip-Watch pump work), owner-approved e
 **Emulator evidence (API 36 AVD, no pump):** bolus section shown with cap 5.00 and the switch off; cap 30 refused ("Cap not saved"); in listen-only, Request → "experimental bolus is switched off", then with the switch on → "needs own-pairing mode"; in own pairing (scanning, no pump) → "could not send to the pump" and the client blocked the step. No crash.
 
 **Not tested:** any pump interaction: permission, initiate, delivery, cancel, release, the real pump maximum, timing of replies, behaviour if the connection drops mid-bolus.
+
+## 12. Garmin phone/watch message compatibility and CI (2026-10-30)
+
+The phone-side Garmin message contract now advertises the **maximum supported version** for each receive-side field. A peer advertising version 3 therefore accepts a field requiring version 2; this is not exact-version equality. The phone continues to advertise only fields with implemented receivers and tests. In particular, it does not advertise `pump_status` receive support, and it withholds optional glucose fields that its parser does not support.
+
+- `GarminWatchMessagesTest`: 24 tests passed in the branch CI validation reported for this update. The tests cover message parsing/validation, capability negotiation and compatibility, collector/slot synchronization, and glucose handling.
+- Unit Test workflow run [#20](https://github.com/miketosh/xDrip-Watch/actions/runs/41050680888), commit [`77cfb2c`](https://github.com/miketosh/xDrip-Watch/commit/77cfb2cede9f8ee0f9e45afe128fbac9dbbb841e), completed successfully on 2026-10-30. The `assembleProdRelease testProdReleaseUnitTest` step and `Check Output` both passed.
+- The workflow uses Temurin JDK 21 for Android SDK 36/Robolectric compatibility. This successful run supersedes the earlier Java 17 environment failure recorded in the coordination log.
+
+**Validation boundary:** this is source compilation, automated unit-test, and APK-output evidence for the Android branch. It does not establish physical phone/watch message delivery, G7 slot acceptance, or any live Tandem pump behavior.
