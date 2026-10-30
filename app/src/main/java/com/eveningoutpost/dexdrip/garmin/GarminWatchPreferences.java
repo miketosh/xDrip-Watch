@@ -3,6 +3,7 @@ package com.eveningoutpost.dexdrip.garmin;
 import android.app.AlertDialog;
 import android.app.PendingIntent;
 import android.content.Intent;
+import android.preference.ListPreference;
 import android.preference.Preference;
 import android.preference.SwitchPreference;
 import android.preference.PreferenceFragment;
@@ -31,24 +32,23 @@ public final class GarminWatchPreferences {
     /** Talk to the G7 Scout Connect IQ app through Garmin Connect. */
     public static final String PREF_ENABLED = "garmin_watch_enabled";
     /**
-     * The watch, not this phone, connects to the G7 (like "Force Wear Collection Service"): the
-     * phone's G7 collector stays off and the watch's readings are stored. Only one client may use
-     * the sensor's app slot. The watch's menu can switch it too; the newer change wins.
+     * Collector mode (owner, 2026-10-30): one setting for who connects to the G7 and on which
+     * slot, so no two settings can disagree. "none": nobody collects; "phone": this phone on the
+     * app slot 02; "watch02": the watch on the app slot 02; "watch03": the watch on its own slot
+     * 03; "dual": the watch on 03 and this phone on 02. Only one client may use a slot. The
+     * watch's menu can change it too; the newer change wins. Replaces the collector switch, the
+     * slot list and the dual switch (garmin_watch_collector, _slot, _dual_collector), which are
+     * converted once.
      */
-    public static final String PREF_WATCH_COLLECTOR = "garmin_watch_collector";
-    /** While the watch collects: switch back to this phone after missed readings. */
+    public static final String PREF_MODE = "garmin_watch_collector_mode";
+    private static final String LEGACY_COLLECTOR = "garmin_watch_collector";
+    private static final String LEGACY_SLOT = "garmin_watch_slot";
+    private static final String LEGACY_DUAL = "garmin_watch_dual_collector";
+    /** While the watch collects alone: switch back to this phone after missed readings. */
     public static final String PREF_FALLBACK = "garmin_watch_fallback";
     public static final String PREF_FALLBACK_MINUTES = "garmin_watch_fallback_minutes";
-    /** Shared phone/watch G7 slot preference: "auto" (try 03, use 02 after refusal), "02" or "03". */
-    public static final String PREF_SLOT = "garmin_watch_slot";
-    /**
-     * Dual collector: the watch collects on slot 03 while this phone keeps collecting on 02.
-     * Only with the slot set to 03; off by default.
-     */
-    public static final String PREF_DUAL = "garmin_watch_dual_collector";
-    /** When the collector choice last changed (epoch seconds), here or on the watch. */
+    /** When the collector mode last changed (epoch seconds), here or on the watch. */
     private static final String STORE_COLLECTOR_CHANGED = "garmin_watch_collector_changed";
-    private static final String STORE_SLOT_CHANGED = "garmin_watch_slot_changed";
     private static final int NOTIFICATION_ID = 7713;
     /** Action: send this phone's saved G7 key to the watch. */
     public static final String PREF_SEND_KEY = "garmin_watch_send_key";
@@ -57,101 +57,89 @@ public final class GarminWatchPreferences {
         return Pref.getBooleanDefaultFalse(PREF_ENABLED);
     }
 
-    public static String slotChoice() {
-        final String s = Pref.getString(PREF_SLOT, "auto");
-        return "02".equals(s) || "03".equals(s) ? s : "auto";
-    }
-
-    public static boolean isDualCollector() {
-        return isEnabled() && "03".equals(slotChoice()) && Pref.getBooleanDefaultFalse(PREF_DUAL);
-    }
-
-    /** The watch collects (alone, or with the phone in dual mode). */
-    public static boolean isWatchCollector() {
-        return isEnabled() && (Pref.getBooleanDefaultFalse(PREF_WATCH_COLLECTOR) || isDualCollector());
-    }
-
-    /** Only the watch collects: this phone's G7 collector stays off. */
-    public static boolean isPhoneCollectorOff() {
-        return isEnabled() && Pref.getBooleanDefaultFalse(PREF_WATCH_COLLECTOR) && !isDualCollector();
-    }
-
-    /** "both", "watch" or "phone", as the collector message carries it. */
+    /** The collector mode; settings from before 2026-10-30 are converted the first time. */
     public static String collectorMode() {
-        return isDualCollector() ? "both" : (isWatchCollector() ? "watch" : "phone");
+        final String mode = Pref.getString(PREF_MODE, "");
+        if (GarminWatchMessages.isCollectorMode(mode)) return mode;
+        final String migrated = legacyMode();
+        Pref.setString(PREF_MODE, migrated);
+        return migrated;
+    }
+
+    private static String legacyMode() {
+        final String slot = Pref.getString(LEGACY_SLOT, "auto");
+        if (Pref.getBooleanDefaultFalse(LEGACY_DUAL) && "03".equals(slot)) return "dual";
+        if (Pref.getBooleanDefaultFalse(LEGACY_COLLECTOR)) return "02".equals(slot) ? "watch02" : "watch03";
+        return "phone";
+    }
+
+    /** The watch collects (alone, or with this phone in dual mode). */
+    public static boolean isWatchCollector() {
+        if (!isEnabled()) return false;
+        final String mode = collectorMode();
+        return "watch02".equals(mode) || "watch03".equals(mode) || "dual".equals(mode);
+    }
+
+    /** This phone's G7 collector stays off: nobody, or only the watch, collects. */
+    public static boolean isPhoneCollectorOff() {
+        if (!isEnabled()) return false;
+        final String mode = collectorMode();
+        return "none".equals(mode) || "watch02".equals(mode) || "watch03".equals(mode);
     }
 
     /** Watch readings are stored while only the watch collects (in dual mode the phone has its own). */
     public static boolean useWatchGlucose() {
-        return isPhoneCollectorOff();
+        if (!isEnabled()) return false;
+        final String mode = collectorMode();
+        return "watch02".equals(mode) || "watch03".equals(mode);
     }
 
     public static long collectorChangedAtSeconds() {
         return PersistentStore.getLong(STORE_COLLECTOR_CHANGED);
     }
 
-    public static long slotChangedAtSeconds() {
-        return PersistentStore.getLong(STORE_SLOT_CHANGED);
-    }
-
-    /**
-     * Applies a newer slot choice received from the watch. Returns whether the
-     * collector mode changed because leaving slot 03 disables Dual collection.
-     */
-    static boolean setWatchSlotChoice(String choice, long changedAtSeconds) {
-        final String before = collectorMode();
-        Pref.setString(PREF_SLOT, "02".equals(choice) || "03".equals(choice) ? choice : "auto");
-        if (!"03".equals(slotChoice())) Pref.setBoolean(PREF_DUAL, false);
-        PersistentStore.setLong(STORE_SLOT_CHANGED, changedAtSeconds);
-        final String after = collectorMode();
-        if (!before.equals(after)) {
-            PersistentStore.setLong(STORE_COLLECTOR_CHANGED, Math.max(changedAtSeconds, JoH.tsl() / 1000));
-            CollectionServiceStarter.restartCollectionServiceBackground();
-            return true;
+    static String label(String mode) {
+        switch (mode) {
+            case "none": return "nobody collects";
+            case "watch02": return "the Garmin watch, app slot 02";
+            case "watch03": return "the Garmin watch, watch slot 03";
+            case "dual": return "the Garmin watch on 03 and this phone on 02";
+            default: return "this phone, app slot 02";
         }
-        return false;
     }
 
-    /** Applies a choice made on the watch or by the fallback, then starts or stops the phone collector. */
-    static void setWatchCollector(boolean watch, long changedAtSeconds, String why) {
-        Pref.setBoolean(PREF_WATCH_COLLECTOR, watch);
-        // A choice from the watch menu or the fallback is one side only.
-        Pref.setBoolean(PREF_DUAL, false);
+    /** Applies a mode chosen on the watch or by the fallback, then starts or stops the phone collector. */
+    static void setCollectorMode(String mode, long changedAtSeconds, String why) {
+        Pref.setString(PREF_MODE, mode);
         PersistentStore.setLong(STORE_COLLECTOR_CHANGED, changedAtSeconds);
-        UserError.Log.uel(TAG, "G7 collector: " + (watch ? "Garmin watch" : "phone") + " (" + why + ")");
+        UserError.Log.uel(TAG, "G7 collector: " + label(mode) + " (" + why + ")");
         CollectionServiceStarter.restartCollectionServiceBackground();
     }
 
-    static void notifyCollector(boolean watch, String why) {
+    static void notifyCollector(String mode, String why) {
         try {
             final PendingIntent home = PendingIntent.getActivity(xdrip.getAppContext(), 0,
                     new Intent(xdrip.getAppContext(), Home.class),
                     PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-            JoH.showNotification(watch ? "Garmin watch collects" : "Phone collects",
-                    "G7 collector: " + (watch ? "Garmin watch" : "this phone") + " (" + why + ")",
+            JoH.showNotification("G7 collector changed", "G7 collector: " + label(mode) + " (" + why + ")",
                     home, NOTIFICATION_ID, false, false, true);
         } catch (Exception e) {
-            JoH.static_toast_long("G7 collector: " + (watch ? "Garmin watch" : "this phone"));
+            JoH.static_toast_long("G7 collector: " + label(mode));
         }
     }
 
     /** MissedReadingService: like "Disable Force Wear after missed readings". */
     public static void checkFallback() {
-        if (!isPhoneCollectorOff() || !Pref.getBooleanDefaultFalse(PREF_FALLBACK)) return;
+        if (!useWatchGlucose() || !Pref.getBooleanDefaultFalse(PREF_FALLBACK)) return;
         final int minutes = Math.max(10, Pref.getStringToInt(PREF_FALLBACK_MINUTES, 30));
         if (BgReading.getTimeSinceLastReading() < minutes * Constants.MINUTE_IN_MS) return;
         final String why = "no reading for " + minutes + " min";
-        setWatchCollector(false, JoH.tsl() / 1000, why);
-        notifyCollector(false, why);
+        setCollectorMode("phone", JoH.tsl() / 1000, why);
+        notifyCollector("phone", why);
         GarminBridge.sendCollector(xdrip.getAppContext(), null);
     }
 
-    /** A collector, dual or slot setting changed here: after it is saved, apply it and tell the watch. */
-    private static void slotChanged() {
-        PersistentStore.setLong(STORE_SLOT_CHANGED, JoH.tsl() / 1000);
-        collectorChanged();
-    }
-
+    /** The collector mode changed here: after it is saved, apply it and tell the watch. */
     private static void collectorChanged() {
         PersistentStore.setLong(STORE_COLLECTOR_CHANGED, JoH.tsl() / 1000);
         Inevitable.task("garmin-collector-changed", 300, () -> {
@@ -176,33 +164,12 @@ public final class GarminWatchPreferences {
                     return true;
                 });
             }
-            final Preference collector = fragment.findPreference(PREF_WATCH_COLLECTOR);
-            if (collector != null) {
-                collector.setOnPreferenceChangeListener((preference, newValue) -> {
+            final Preference mode = fragment.findPreference(PREF_MODE);
+            if (mode != null) {
+                // Shows a mode converted from the old switches.
+                if (mode instanceof ListPreference) ((ListPreference) mode).setValue(collectorMode());
+                mode.setOnPreferenceChangeListener((preference, newValue) -> {
                     collectorChanged();
-                    return true;
-                });
-            }
-            final Preference dual = fragment.findPreference(PREF_DUAL);
-            if (dual != null) {
-                dual.setEnabled("03".equals(slotChoice()));
-                dual.setOnPreferenceChangeListener((preference, newValue) -> {
-                    collectorChanged();
-                    return true;
-                });
-            }
-            final Preference slot = fragment.findPreference(PREF_SLOT);
-            if (slot != null) {
-                slot.setOnPreferenceChangeListener((preference, newValue) -> {
-                    // Dual collection needs the watch on slot 03.
-                    final boolean on03 = "03".equals(newValue);
-                    if (dual != null) {
-                        if (!on03 && dual instanceof SwitchPreference && ((SwitchPreference) dual).isChecked()) {
-                            ((SwitchPreference) dual).setChecked(false);
-                        }
-                        dual.setEnabled(on03);
-                    }
-                    slotChanged();
                     return true;
                 });
             }
