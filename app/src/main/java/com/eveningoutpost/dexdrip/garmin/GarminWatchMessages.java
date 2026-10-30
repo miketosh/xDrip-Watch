@@ -26,7 +26,7 @@ public final class GarminWatchMessages {
     public static final int VERSION = 1;
     // Field-level capabilities: slot fields are version 2 because older bridge
     // peers may understand collector v1 but not the later slot message.
-    private static final String LOCAL_FIELD_VERSIONS = "collector.c=1|collector.ts=1|slot.s=2|slot.ts=2|pump_status.sent=1|pump_status.seq=1|pump_status.link=1|pump_status.iob=1|pump_status.iob_t=1|pump_status.cb_st=1|pump_status.cb_t=1|pump_status.cb_u=1|pump_status.cb_pt=1|glucose.tx=1|glucose.sq=1|glucose.mg=1|glucose.st=1|glucose.rt=1|glucose.tr=1|glucose.pr=1|glucose.alg=1|glucose.do=1|glucose.rel=1|key.key=1|key.tx=1|key.name=1";
+    private static final String LOCAL_FIELD_VERSIONS = "collector.c=1|collector.ts=1|slot.s=2|slot.ts=2|glucose.tx=1|glucose.sq=1|glucose.mg=1|glucose.st=1|glucose.rt=1|glucose.tr=1|glucose.pr=1|glucose.alg=1|glucose.do=1|glucose.rel=1";
 
     /** Advertise maximum supported versions for individual fields (flat string for Connect IQ v1). */
     public static Map<String, Object> capabilitiesMessage() {
