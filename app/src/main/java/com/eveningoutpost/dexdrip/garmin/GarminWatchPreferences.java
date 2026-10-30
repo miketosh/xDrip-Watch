@@ -48,6 +48,7 @@ public final class GarminWatchPreferences {
     public static final String PREF_DUAL = "garmin_watch_dual_collector";
     /** When the collector choice last changed (epoch seconds), here or on the watch. */
     private static final String STORE_COLLECTOR_CHANGED = "garmin_watch_collector_changed";
+    private static final String STORE_SLOT_CHANGED = "garmin_watch_slot_changed";
     private static final int NOTIFICATION_ID = 7713;
     /** Action: send this phone's saved G7 key to the watch. */
     public static final String PREF_SEND_KEY = "garmin_watch_send_key";
@@ -89,6 +90,28 @@ public final class GarminWatchPreferences {
         return PersistentStore.getLong(STORE_COLLECTOR_CHANGED);
     }
 
+    public static long slotChangedAtSeconds() {
+        return PersistentStore.getLong(STORE_SLOT_CHANGED);
+    }
+
+    /**
+     * Applies a newer slot choice received from the watch. Returns whether the
+     * collector mode changed because leaving slot 03 disables Dual collection.
+     */
+    static boolean setWatchSlotChoice(String choice, long changedAtSeconds) {
+        final String before = collectorMode();
+        Pref.setString(PREF_SLOT, "02".equals(choice) || "03".equals(choice) ? choice : "auto");
+        if (!"03".equals(slotChoice())) Pref.setBoolean(PREF_DUAL, false);
+        PersistentStore.setLong(STORE_SLOT_CHANGED, changedAtSeconds);
+        final String after = collectorMode();
+        if (!before.equals(after)) {
+            PersistentStore.setLong(STORE_COLLECTOR_CHANGED, changedAtSeconds);
+            CollectionServiceStarter.restartCollectionServiceBackground();
+            return true;
+        }
+        return false;
+    }
+
     /** Applies a choice made on the watch or by the fallback, then starts or stops the phone collector. */
     static void setWatchCollector(boolean watch, long changedAtSeconds, String why) {
         Pref.setBoolean(PREF_WATCH_COLLECTOR, watch);
@@ -124,6 +147,11 @@ public final class GarminWatchPreferences {
     }
 
     /** A collector, dual or slot setting changed here: after it is saved, apply it and tell the watch. */
+    private static void slotChanged() {
+        PersistentStore.setLong(STORE_SLOT_CHANGED, JoH.tsl() / 1000);
+        collectorChanged();
+    }
+
     private static void collectorChanged() {
         PersistentStore.setLong(STORE_COLLECTOR_CHANGED, JoH.tsl() / 1000);
         Inevitable.task("garmin-collector-changed", 300, () -> {
@@ -174,7 +202,7 @@ public final class GarminWatchPreferences {
                         }
                         dual.setEnabled(on03);
                     }
-                    collectorChanged();
+                    slotChanged();
                     return true;
                 });
             }
