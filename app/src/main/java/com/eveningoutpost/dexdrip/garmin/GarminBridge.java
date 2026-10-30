@@ -48,6 +48,7 @@ public class GarminBridge {
     private static final GarminWatchMessages.Deduper watchGlucoseSeen = new GarminWatchMessages.Deduper(64);
     /** Bridge test screen: the last watch message outcome. Never holds a glucose value. */
     public static volatile String lastWatchGlucose = "none yet";
+    private static volatile String watchFieldVersions = "";
 
     /** Settings → Smart Watch Features → Garmin watch: listen to the watch at all. */
     public static boolean watchGlucoseEnabled() {
@@ -127,8 +128,11 @@ public class GarminBridge {
     public static void sendCollector(Context context, StatusListener listener) {
         send(context, GarminWatchMessages.collectorMessage(GarminWatchPreferences.collectorMode(),
                 GarminWatchPreferences.collectorChangedAtSeconds()), listener);
-        send(context, GarminWatchMessages.slotMessage(GarminWatchPreferences.slotChoice(),
-                GarminWatchPreferences.slotChangedAtSeconds()), listener);
+        if (GarminWatchMessages.supportsField(watchFieldVersions, "slot.s", 2)
+                && GarminWatchMessages.supportsField(watchFieldVersions, "slot.ts", 2)) {
+            send(context, GarminWatchMessages.slotMessage(GarminWatchPreferences.slotChoice(),
+                    GarminWatchPreferences.slotChangedAtSeconds()), listener);
+        }
     }
 
     /** Initializes the SDK if needed, then sends the message to every known watch. */
@@ -274,12 +278,12 @@ public class GarminBridge {
                 report(listener, "registerForAppEvents failed: " + e);
             }
         }
+        // Advertise supported field versions before optional newer fields.
+        sendToKnownDevices(GarminWatchMessages.capabilitiesMessage(), listener);
         // This phone's choice, also when never changed (time 0): a fresh watch starts as the
         // collector and must learn that the phone collects (2026-10-26).
         sendToKnownDevices(GarminWatchMessages.collectorMessage(GarminWatchPreferences.collectorMode(),
                 GarminWatchPreferences.collectorChangedAtSeconds()), listener);
-        sendToKnownDevices(GarminWatchMessages.slotMessage(GarminWatchPreferences.slotChoice(),
-                GarminWatchPreferences.slotChangedAtSeconds()), listener);
     }
 
     /** Contract 6.3: store a reading only if the watch marked it reliable, in range, dated sensibly and new. */
@@ -290,6 +294,10 @@ public class GarminBridge {
         }
         for (final Object m : messages) {
             if (!(m instanceof Map)) continue;
+            if (GarminWatchMessages.isCapabilitiesMessage((Map<?, ?>) m)) {
+                onWatchCapabilities((Map<?, ?>) m, listener);
+                continue;
+            }
             if (GarminWatchMessages.COLLECTOR.equals(((Map<?, ?>) m).get("t"))) {
                 onWatchCollector((Map<?, ?>) m, listener);
                 continue;
@@ -318,6 +326,18 @@ public class GarminBridge {
                 report(listener, "Watch glucose seq " + g.sequence + " from " + g.sensor
                         + (bgr != null ? ": stored" : ": not stored, start a sensor in xDrip first"));
             });
+        }
+    }
+
+    private static void onWatchCapabilities(Map<?, ?> m, StatusListener listener) {
+        final Object fields = m.get("f");
+        if (!(fields instanceof String) || ((String) fields).length() > 512) return;
+        watchFieldVersions = "|" + fields + "|";
+        report(listener, "Watch field capabilities received");
+        if (GarminWatchMessages.supportsField(watchFieldVersions, "slot.s", 2)
+                && GarminWatchMessages.supportsField(watchFieldVersions, "slot.ts", 2)) {
+            sendToKnownDevices(GarminWatchMessages.slotMessage(GarminWatchPreferences.slotChoice(),
+                    GarminWatchPreferences.slotChangedAtSeconds()), listener);
         }
     }
 
