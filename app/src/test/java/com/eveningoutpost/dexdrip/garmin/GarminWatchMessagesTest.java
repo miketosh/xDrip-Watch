@@ -19,6 +19,28 @@ public class GarminWatchMessagesTest {
     private static final long NOW_MS = 1_793_000_000_000L; // 2026-10-26, fits Connect IQ Number
     private static final int NOW_S = (int) (NOW_MS / 1000);
 
+    @Test
+    public void fieldCapabilitiesAdvertisePerFieldVersions() {
+        final Map<String, Object> caps = GarminWatchMessages.capabilitiesMessage();
+        assertEquals("caps", caps.get("t"));
+        assertEquals(1, caps.get("v"));
+        assertTrue(GarminWatchMessages.isCapabilitiesMessage(caps));
+        final String fields = (String) caps.get("f");
+        assertTrue(GarminWatchMessages.supportsField("|" + fields + "|", "slot.s", 2));
+        assertFalse(GarminWatchMessages.supportsField(null, "slot.s", 2));
+        assertTrue(GarminWatchMessages.supportsField(null, "glucose.mg", 1));
+        assertFalse(GarminWatchMessages.supportsField("|slot.s=1|", "slot.s", 2));
+    }
+
+    @Test
+    public void malformedCapabilitiesAreRejected() {
+        final Map<String, Object> caps = new HashMap<>();
+        caps.put("t", "caps");
+        caps.put("v", 1);
+        caps.put("f", new Object());
+        assertFalse(GarminWatchMessages.isCapabilitiesMessage(caps));
+    }
+
     // --- pump_status (phone → watch) ---
 
     @Test
