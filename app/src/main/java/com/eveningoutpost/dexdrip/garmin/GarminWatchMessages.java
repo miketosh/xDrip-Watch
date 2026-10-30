@@ -58,7 +58,7 @@ public final class GarminWatchMessages {
         return m;
     }
 
-    /** Phone → watch: the watch's G7 slot, {@code {t: "slot", v: 1, s: "auto"|"02"|"03"}}. */
+    /** Both directions: shared slot choice and change timestamp, {@code {t: "slot", v: 1, s, ts}}. */
     public static Map<String, Object> slotMessage(String choice) {
         final Map<String, Object> m = new HashMap<>();
         m.put("t", SLOT);
