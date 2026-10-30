@@ -24,6 +24,31 @@ public final class GarminWatchMessages {
     public static final String COLLECTOR = "collector";
     public static final String SLOT = "slot";
     public static final int VERSION = 1;
+    // Field-level capabilities: slot fields are version 2 because older bridge
+    // peers may understand collector v1 but not the later slot message.
+    private static final String LOCAL_FIELD_VERSIONS = "collector.c=1|collector.ts=1|slot.s=2|slot.ts=2|pump_status.sent=1|pump_status.seq=1|pump_status.link=1|pump_status.iob=1|pump_status.iob_t=1|pump_status.cb_st=1|pump_status.cb_t=1|pump_status.cb_u=1|pump_status.cb_pt=1|glucose.tx=1|glucose.sq=1|glucose.mg=1|glucose.st=1|glucose.rt=1|glucose.tr=1|glucose.pr=1|glucose.alg=1|glucose.do=1|glucose.rel=1|key.key=1|key.tx=1|key.name=1";
+
+    /** Advertise maximum supported versions for individual fields (flat string for Connect IQ v1). */
+    public static Map<String, Object> capabilitiesMessage() {
+        final Map<String, Object> m = new HashMap<>();
+        m.put("t", "caps");
+        m.put("v", VERSION);
+        m.put("f", LOCAL_FIELD_VERSIONS);
+        return m;
+    }
+
+    /** Exact field-version lookup; unknown peers default to established v1 fields only. */
+    public static boolean supportsField(@Nullable String fields, String field, int requiredVersion) {
+        if (fields == null || fields.isEmpty()) return requiredVersion <= 1;
+        return fields.contains("|" + field + "=" + requiredVersion + "|");
+    }
+
+    public static boolean isCapabilitiesMessage(@Nullable Map<?, ?> m) {
+        return m != null && "caps".equals(m.get("t"))
+                && Integer.valueOf(VERSION).equals(asInt(m.get("v")))
+                && m.get("f") instanceof String
+                && ((String) m.get("f")).length() <= 512;
+    }
 
     /** Which side connects to the G7 ("watch", "phone" or "both"), and when that was chosen (epoch seconds). */
     public static final class Collector {
