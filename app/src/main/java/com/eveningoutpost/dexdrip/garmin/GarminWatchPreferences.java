@@ -105,7 +105,7 @@ public final class GarminWatchPreferences {
         PersistentStore.setLong(STORE_SLOT_CHANGED, changedAtSeconds);
         final String after = collectorMode();
         if (!before.equals(after)) {
-            PersistentStore.setLong(STORE_COLLECTOR_CHANGED, changedAtSeconds);
+            PersistentStore.setLong(STORE_COLLECTOR_CHANGED, Math.max(changedAtSeconds, JoH.tsl() / 1000));
             CollectionServiceStarter.restartCollectionServiceBackground();
             return true;
         }
