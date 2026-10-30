@@ -6,7 +6,10 @@ echo "APK doesn't exist"
 exit 5
 fi
 s=`du -B 1048576 "$f" | cut -f1 | tr -dc '0-9'`
-if [ $s -lt 15 ] || [ $s -gt 22 ]
+# The Garmin Connect IQ bridge and opt-in PumpX2 prototype add phone-side
+# runtime dependencies. The current release APK is 23 MiB, so allow 24 MiB
+# while retaining a hard ceiling against unexpected APK growth.
+if [ $s -lt 15 ] || [ $s -gt 24 ]
 then
 echo "APK out of size range @ ${s}M"
 exit 5
