@@ -38,6 +38,17 @@ public class GarminWatchMessagesTest {
     }
 
     @Test
+    public void capabilitiesCanAskForAReplyOnce() {
+        final Map<String, Object> ask = GarminWatchMessages.capabilitiesMessage(true);
+        assertTrue(GarminWatchMessages.isCapabilitiesMessage(ask));
+        assertTrue(GarminWatchMessages.wantsCapabilitiesReply(ask));
+        final Map<String, Object> reply = GarminWatchMessages.capabilitiesMessage(false);
+        assertFalse(GarminWatchMessages.wantsCapabilitiesReply(reply));
+        assertFalse(GarminWatchMessages.wantsCapabilitiesReply(GarminWatchMessages.capabilitiesMessage()));
+        assertTrue(((String) ask.get("f")).contains("caps.r=2"));
+    }
+
+    @Test
     public void malformedCapabilitiesAreRejected() {
         final Map<String, Object> caps = new HashMap<>();
         caps.put("t", "caps");

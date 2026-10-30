@@ -300,7 +300,7 @@ public class GarminBridge {
             }
         }
         // Advertise supported field versions before optional newer fields.
-        sendToKnownDevices(GarminWatchMessages.capabilitiesMessage(), listener);
+        sendToKnownDevices(GarminWatchMessages.capabilitiesMessage(true), listener);
         // This phone's choice, also when never changed (time 0): a fresh watch starts as the
         // collector and must learn that the phone collects (2026-10-26).
         sendToKnownDevices(GarminWatchMessages.collectorMessage(GarminWatchPreferences.collectorMode(),
@@ -355,6 +355,9 @@ public class GarminBridge {
         if (!(fields instanceof String) || ((String) fields).length() > 512) return;
         watchFieldVersions = "|" + fields + "|";
         report(listener, "Watch field capabilities received");
+        if (GarminWatchMessages.wantsCapabilitiesReply(m)) {
+            sendToKnownDevices(GarminWatchMessages.capabilitiesMessage(false), listener);
+        }
         if (GarminWatchMessages.supportsField(watchFieldVersions, "slot.s", 2)
                 && GarminWatchMessages.supportsField(watchFieldVersions, "slot.ts", 2)) {
             sendToKnownDevices(GarminWatchMessages.slotMessage(GarminWatchPreferences.slotChoice(),
@@ -404,7 +407,9 @@ public class GarminBridge {
             sendCollectorToKnownDevices(listener);
         } else if (slot.changedAtSeconds == phoneChangedAt &&
                 slot.choice.equals(GarminWatchPreferences.slotChoice())) {
-            // Already synchronized.
+            // Already synchronized: echo anyway, the watch keeps its change
+            // pending (and resends it every 15 s) until it sees this choice.
+            sendCollectorToKnownDevices(listener);
         } else {
             // Phone is newer, or timestamps tie with a different value.
             sendCollectorToKnownDevices(listener);
