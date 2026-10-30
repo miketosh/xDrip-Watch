@@ -41,6 +41,10 @@ Settings → Smart Watch Features → **Garmin watch (G7 Scout)**:
 | `garmin_watch_send_key` | action | Sends the saved G7 key after a confirmation |
 | `garmin_watch_diagnostics` | screen | `GarminBridgeTestActivity`: ping, key send, listener status |
 
+## Message compatibility
+
+At startup the phone advertises the maximum supported version of each field it can receive in a `caps` v1 message; the watch does the same for fields it receives. The flat `f` string contains entries such as `slot.s=2|slot.ts=2`. Message wire version (`v`) and individual field version are independent. A receiver advertising v3 also supports a field requiring v2. A sender omits a newer field unless the receiver advertised that field version. Each side sends its list with `r: 1` when it starts (xDrip when it starts listening, the watch app at launch) and answers a received `r: 1` once with its own list, which carries no `r`; so both learn the other's list whichever starts first (review 2026-10-30). xDrip also echoes a watch slot message that matches its own choice, so the watch can clear a pending change. A peer that sends no capability message is treated as supporting established v1 fields only; the slot fields and optional key.name field are version 2 and therefore are not sent to that legacy peer. Optional glucose.alg, glucose.do and glucose.pr are withheld unless the phone advertises them. Add a field to the capability list only after its receiving parser/handler and tests are in place.
+
 ## Key handoff
 
 "Send G7 key" sends `{t: "key", v: 1, tx, key: 32 hex, name}` after a confirmation. `name` is Android's name for the bonded sensor whose key it is (`BluetoothAdapter.getRemoteDevice(mac).getName()`, e.g. `DXCMz8`), left out if unknown; the watch then connects only to that name, since one G7 advertises under two names and the watch cannot see addresses. The message on screen shows `#XXXX`, the first 2 bytes of SHA-256(key), which the watch's Status screen shows too.

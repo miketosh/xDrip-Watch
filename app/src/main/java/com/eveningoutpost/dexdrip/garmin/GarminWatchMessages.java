@@ -20,6 +20,56 @@ public final class GarminWatchMessages {
     public static final String COLLECTOR = "collector";
     public static final String SLOT = "slot";
     public static final int VERSION = 1;
+    // Field-level capabilities: slot fields are version 2 because older bridge
+    // peers may understand collector v1 but not the later slot message.
+    private static final String LOCAL_FIELD_VERSIONS = "caps.t=1|caps.v=1|caps.f=1|caps.r=2|collector.t=1|collector.v=1|collector.c=1|collector.ts=1|slot.t=1|slot.v=1|slot.s=2|slot.ts=2|glucose.t=1|glucose.v=1|glucose.tx=1|glucose.sq=1|glucose.mg=1|glucose.st=1|glucose.rt=1|glucose.tr=1|glucose.rel=1";
+
+    /** Advertise maximum supported versions for individual fields (flat string for Connect IQ v1). */
+    public static Map<String, Object> capabilitiesMessage() {
+        return capabilitiesMessage(false);
+    }
+
+    /**
+     * With {@code requestReply} the message carries {@code r: 1}: the peer answers with its own
+     * capabilities once (a reply carries no {@code r}, so it never loops). Each side used to learn
+     * the other's only when it started second (review 2026-10-30).
+     */
+    public static Map<String, Object> capabilitiesMessage(boolean requestReply) {
+        final Map<String, Object> m = new HashMap<>();
+        m.put("t", "caps");
+        m.put("v", VERSION);
+        m.put("f", LOCAL_FIELD_VERSIONS);
+        if (requestReply) m.put("r", 1);
+        return m;
+    }
+
+    /** Exact field-version lookup; unknown peers default to established v1 fields only. */
+    public static boolean supportsField(@Nullable String fields, String field, int requiredVersion) {
+        if (fields == null || fields.isEmpty()) return requiredVersion <= 1;
+        final String prefix = "|" + field + "=";
+        final int start = fields.indexOf(prefix);
+        if (start < 0) return false;
+        final int valueStart = start + prefix.length();
+        final int end = fields.indexOf('|', valueStart);
+        if (end < 0 || end == valueStart) return false;
+        try {
+            return Integer.parseInt(fields.substring(valueStart, end)) >= requiredVersion;
+        } catch (NumberFormatException e) {
+            return false;
+        }
+    }
+
+    /** A capabilities message that asks for ours in return. */
+    public static boolean wantsCapabilitiesReply(@Nullable Map<?, ?> m) {
+        return m != null && Integer.valueOf(1).equals(asInt(m.get("r")));
+    }
+
+    public static boolean isCapabilitiesMessage(@Nullable Map<?, ?> m) {
+        return m != null && "caps".equals(m.get("t"))
+                && Integer.valueOf(VERSION).equals(asInt(m.get("v")))
+                && m.get("f") instanceof String
+                && ((String) m.get("f")).length() <= 512;
+    }
 
     /** Which side connects to the G7 ("watch", "phone" or "both"), and when that was chosen (epoch seconds). */
     public static final class Collector {
@@ -54,17 +104,48 @@ public final class GarminWatchMessages {
         return m;
     }
 
-    /** Phone → watch: the watch's G7 slot, {@code {t: "slot", v: 1, s: "auto"|"02"|"03"}}. */
+    /** Versioned G7 slot preference, exchanged in both directions. */
+    public static final class Slot {
+        public final String choice;
+        public final long changedAtSeconds;
+
+        Slot(String choice, long changedAtSeconds) {
+            this.choice = choice;
+            this.changedAtSeconds = changedAtSeconds;
+        }
+    }
+
+    /** Both directions: {t: "slot", v: 1, s: "auto"|"02"|"03", ts}. */
+    @Nullable
+    public static Slot parseSlot(@Nullable Map<?, ?> m) {
+        if (m == null || !SLOT.equals(m.get("t"))) return null;
+        if (!Integer.valueOf(VERSION).equals(asInt(m.get("v")))) return null;
+        final Object s = m.get("s");
+        final Integer ts = asInt(m.get("ts"));
+        if (ts == null || ts < 0 || !("auto".equals(s) || "02".equals(s) || "03".equals(s))) return null;
+        return new Slot((String) s, ts);
+    }
+
     public static Map<String, Object> slotMessage(String choice) {
+        return slotMessage(choice, 0);
+    }
+
+    public static Map<String, Object> slotMessage(String choice, long changedAtSeconds) {
         final Map<String, Object> m = new HashMap<>();
         m.put("t", SLOT);
         m.put("v", VERSION);
         m.put("s", "02".equals(choice) || "03".equals(choice) ? choice : "auto");
+        m.put("ts", (int) Math.max(0, changedAtSeconds));
         return m;
     }
 
     /** The newer choice wins; on a tie the phone keeps its own (the watch then takes the phone's). */
     public static boolean replacesPhoneChoice(Collector fromWatch, long phoneChangedAtSeconds) {
+        return fromWatch.changedAtSeconds > phoneChangedAtSeconds;
+    }
+
+    /** Phone keeps its slot choice on a timestamp tie, just as it does for collector v1. */
+    public static boolean replacesPhoneSlot(Slot fromWatch, long phoneChangedAtSeconds) {
         return fromWatch.changedAtSeconds > phoneChangedAtSeconds;
     }
 

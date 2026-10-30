@@ -18,6 +18,43 @@ public class GarminWatchMessagesTest {
     private static final long NOW_MS = 1_793_000_000_000L; // 2026-10-26, fits Connect IQ Number
     private static final int NOW_S = (int) (NOW_MS / 1000);
 
+    @Test
+    public void fieldCapabilitiesAdvertisePerFieldVersions() {
+        final Map<String, Object> caps = GarminWatchMessages.capabilitiesMessage();
+        assertEquals("caps", caps.get("t"));
+        assertEquals(1, caps.get("v"));
+        assertTrue(GarminWatchMessages.isCapabilitiesMessage(caps));
+        final String fields = (String) caps.get("f");
+        assertTrue(GarminWatchMessages.supportsField("|" + fields + "|", "slot.s", 2));
+        assertTrue(fields.contains("glucose.rel=1"));
+        assertFalse(fields.contains("pump_status.t"));
+        assertFalse(GarminWatchMessages.supportsField(null, "slot.s", 2));
+        assertTrue(GarminWatchMessages.supportsField(null, "glucose.mg", 1));
+        assertFalse(GarminWatchMessages.supportsField("|slot.s=1|", "slot.s", 2));
+        assertTrue(GarminWatchMessages.supportsField("|slot.s=3|", "slot.s", 2));
+        assertFalse(GarminWatchMessages.supportsField(null, "key.name", 2));
+    }
+
+    @Test
+    public void capabilitiesCanAskForAReplyOnce() {
+        final Map<String, Object> ask = GarminWatchMessages.capabilitiesMessage(true);
+        assertTrue(GarminWatchMessages.isCapabilitiesMessage(ask));
+        assertTrue(GarminWatchMessages.wantsCapabilitiesReply(ask));
+        final Map<String, Object> reply = GarminWatchMessages.capabilitiesMessage(false);
+        assertFalse(GarminWatchMessages.wantsCapabilitiesReply(reply));
+        assertFalse(GarminWatchMessages.wantsCapabilitiesReply(GarminWatchMessages.capabilitiesMessage()));
+        assertTrue(((String) ask.get("f")).contains("caps.r=2"));
+    }
+
+    @Test
+    public void malformedCapabilitiesAreRejected() {
+        final Map<String, Object> caps = new HashMap<>();
+        caps.put("t", "caps");
+        caps.put("v", 1);
+        caps.put("f", new Object());
+        assertFalse(GarminWatchMessages.isCapabilitiesMessage(caps));
+    }
+
     // --- glucose (watch → phone) ---
 
     private static Map<String, Object> reading() {
@@ -166,10 +203,38 @@ public class GarminWatchMessagesTest {
     }
 
     @Test
-    public void slotMessageCarriesOnlyKnownChoices() {
-        assertEquals("03", GarminWatchMessages.slotMessage("03").get("s"));
-        assertEquals("02", GarminWatchMessages.slotMessage("02").get("s"));
-        assertEquals("auto", GarminWatchMessages.slotMessage("04").get("s"));
-        assertEquals("slot", GarminWatchMessages.slotMessage("auto").get("t"));
+    public void slotMessageCarriesChoiceAndTimestamp() {
+        final Map<String, Object> message = GarminWatchMessages.slotMessage("03", NOW_S);
+        assertEquals("03", message.get("s"));
+        assertEquals(NOW_S, message.get("ts"));
+        assertEquals("slot", message.get("t"));
+        assertEquals(1, message.get("v"));
+        assertEquals("02", GarminWatchMessages.slotMessage("02", NOW_S).get("s"));
+        assertEquals("auto", GarminWatchMessages.slotMessage("04", NOW_S).get("s"));
+    }
+
+    @Test
+    public void slotRoundTripsAndRejectsMalformedMessages() {
+        final GarminWatchMessages.Slot parsed = GarminWatchMessages.parseSlot(
+                GarminWatchMessages.slotMessage("03", NOW_S));
+        assertNotNull(parsed);
+        assertEquals("03", parsed.choice);
+        assertEquals(NOW_S, parsed.changedAtSeconds);
+        final Map<String, Object> invalidTime = GarminWatchMessages.slotMessage("03", NOW_S);
+        invalidTime.put("ts", -1);
+        assertNull(GarminWatchMessages.parseSlot(invalidTime));
+        final Map<String, Object> invalid = GarminWatchMessages.slotMessage("03", NOW_S);
+        invalid.put("s", "04");
+        assertNull(GarminWatchMessages.parseSlot(invalid));
+    }
+
+    @Test
+    public void phoneWinsSlotTimestampTiesAndNewerWatchChoiceWins() {
+        final GarminWatchMessages.Slot newer = GarminWatchMessages.parseSlot(
+                GarminWatchMessages.slotMessage("02", NOW_S + 1));
+        final GarminWatchMessages.Slot tied = GarminWatchMessages.parseSlot(
+                GarminWatchMessages.slotMessage("02", NOW_S));
+        assertTrue(GarminWatchMessages.replacesPhoneSlot(newer, NOW_S));
+        assertFalse(GarminWatchMessages.replacesPhoneSlot(tied, NOW_S));
     }
 }
