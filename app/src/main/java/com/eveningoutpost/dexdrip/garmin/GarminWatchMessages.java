@@ -67,8 +67,48 @@ public final class GarminWatchMessages {
         return m;
     }
 
+    /** Versioned G7 slot preference, exchanged in both directions. */
+    public static final class Slot {
+        public final String choice;
+        public final long changedAtSeconds;
+
+        Slot(String choice, long changedAtSeconds) {
+            this.choice = choice;
+            this.changedAtSeconds = changedAtSeconds;
+        }
+    }
+
+    /** Both directions: {t: "slot", v: 1, s: "auto"|"02"|"03", ts}. */
+    @Nullable
+    public static Slot parseSlot(@Nullable Map<?, ?> m) {
+        if (m == null || !SLOT.equals(m.get("t"))) return null;
+        if (!Integer.valueOf(VERSION).equals(asInt(m.get("v")))) return null;
+        final Object s = m.get("s");
+        final Integer ts = asInt(m.get("ts"));
+        if (ts == null || ts < 0 || !("auto".equals(s) || "02".equals(s) || "03".equals(s))) return null;
+        return new Slot((String) s, ts);
+    }
+
+    public static Map<String, Object> slotMessage(String choice) {
+        return slotMessage(choice, 0);
+    }
+
+    public static Map<String, Object> slotMessage(String choice, long changedAtSeconds) {
+        final Map<String, Object> m = new HashMap<>();
+        m.put("t", SLOT);
+        m.put("v", VERSION);
+        m.put("s", "02".equals(choice) || "03".equals(choice) ? choice : "auto");
+        m.put("ts", (int) Math.max(0, changedAtSeconds));
+        return m;
+    }
+
     /** The newer choice wins; on a tie the phone keeps its own (the watch then takes the phone's). */
     public static boolean replacesPhoneChoice(Collector fromWatch, long phoneChangedAtSeconds) {
+        return fromWatch.changedAtSeconds > phoneChangedAtSeconds;
+    }
+
+    /** Phone keeps its slot choice on a timestamp tie, just as it does for collector v1. */
+    public static boolean replacesPhoneSlot(Slot fromWatch, long phoneChangedAtSeconds) {
         return fromWatch.changedAtSeconds > phoneChangedAtSeconds;
     }
 
