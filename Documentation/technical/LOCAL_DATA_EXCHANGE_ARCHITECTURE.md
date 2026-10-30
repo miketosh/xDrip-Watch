@@ -1,7 +1,7 @@
 # Local data exchange architecture: Tandem, xDrip-Watch, and Garmin G7 Scout
 
 **Canonical cross-repository design contract**  
-**Updated:** 2026-10-26 (implementation reconciliation)  
+**Updated:** 2026-10-29 (bidirectional slot synchronization)  
 **Phone-side repository:** [`miketosh/xDrip-Watch`, branch `garmin-bridge`](https://github.com/miketosh/xDrip-Watch/tree/garmin-bridge)  
 **Watch-side repository:** [`miketosh/garmin7-scout`, branch `main`](https://github.com/miketosh/garmin7-scout/tree/main)
 
@@ -87,7 +87,7 @@ Keep the current message types separate; never overload saved G7 authentication-
 | Phone → watch | `pump_status` v1 | Phone builder + test button exist; watch receiver/display not implemented | Compact pump snapshot. Current Java builder emits `t`, `v`, `sent`, `seq`, and `link`; when snapshot values exist it may add `iob`/`iob_t` and `cb_st`/`cb_t`, with `cb_u`/`cb_pt` for non-`none` bolus states. Reserved basal/last-bolus fields are not emitted. Phone builder does not itself implement the watch freshness/display policy. |
 | Watch → phone | `glucose` v1 | Watch sender + phone parser/receiver built; not verified on hardware | A new accepted reading obtained from the watch's direct G7 collector. Renamed from `glucose_reading`: the watch logs a message type only if it is ≤ 12 characters. |
 | Phone ↔ watch | `collector` v1 | Implemented on both sides; host/simulator evidence, physical handoff unverified | Chooses collection ownership (`watch`, `phone`, or `both`). `both` is dual-collector mode: phone on slot `0x02`, watch on slot `0x03`; it is permitted only with slot `03`. Timestamp synchronization resolves changes. This is collection ownership, not a therapy command. |
-| Phone → watch | `slot` v1 | Phone builder and watch handler implemented; physical slot acceptance unverified | Carries the requested G7 slot `s` = `auto`, `02`, or `03`. `auto` follows the watch's slot policy; `02` or `03` force the requested slot. Slot preference is separate from collector ownership. |
+| Phone ↔ watch | `slot` v1 | Bidirectional timestamped messages implemented; automated tests added; physical slot acceptance unverified | Carries the requested G7 slot `s` = `auto`, `02`, or `03`, plus `ts` (epoch seconds). `auto` follows the watch's slot policy; `02` or `03` force the requested slot. Newer change wins; phone wins timestamp ties. Slot preference is separate from collector ownership. Leaving slot `03` disables Dual collection. |
 | Phone → watch | bounded `pump_history` batch (later) | Planned | Validated, timestamped events with deterministic IDs, explicit event semantics and strict count/size limits. |
 
 ### 6.1 Rules for every v1 message (reviewed 2026-10-25; keep both repositories aligned)
@@ -97,6 +97,7 @@ Keep the current message types separate; never overload saved G7 authentication-
 - **Unknown means absent.** A value that is not known is left out; `0` always means a reported zero; `null` is never sent. A field of the wrong type is treated as absent; the rest of the message stays usable unless an identity or time field it depends on is broken.
 - **Every value carries its own time** (`*_t` = when the phone or watch received it from the pump or sensor; `*_pt`/`st` = the device's own time where it reports one). Receivers judge freshness from these, not from when the message arrived.
 - Receivers ignore unknown keys, so later versions can add fields. Changing a field's meaning or units requires a new `v`.
+- The `slot` v1 message includes `ts` (epoch seconds), persisted independently on each side. A newer slot choice replaces an older one; on a timestamp tie, the phone's choice wins. Collector and slot timestamps are independent.
 - Keys starting `x_` are reserved for xDrip-modelled (not device-reported) values; v1 defines none.
 - No secrets, no raw BLE/protocol bytes. Logs on both sides record type, version, field count and accept/reject reason, never values.
 - No therapy-changing commands in this data contract: the watch never asks the phone or pump to deliver a bolus, change basal/profile, suspend, or resume therapy. The `collector` message only synchronizes which device connects to the G7.
@@ -164,3 +165,11 @@ Sent once per new G7 reading (new sequence), via Connect IQ `Communications.tran
 6. Only with owner approval, test the real pump and G7 under a reversible plan that preserves the pump↔G7 link and documents restoring the normal phone collector if required.
 
 **Current truth (2026-10-27):** the phone/watch bridge implements `ping`, saved-key `key` handoff (with sensor name when known), `collector` v1 ownership synchronization (including the `both` mode), `slot` v1 preference messages, and the watch-to-phone `glucose` v1 sender/receiver path. Host/unit tests and builds are not physical-device proof. The phone-side `pump_status` v1 builder and manual send action exist, but the watch receiver/display and `pump_history` are not implemented. Tandem pump values/history and end-to-end phone/watch delivery remain unverified on physical hardware.
+
+
+## Slot preference synchronization implementation note — 2026-10-29
+
+- Watch menu changes now send `slot` v1 to xDrip with a persisted timestamp; pending watch changes are retried when the phone bridge starts.
+- xDrip accepts a newer watch-originated choice, stores it, and sends its current slot and collector settings back. Phone-side slot preference changes publish the same timestamped message to the watch.
+- Equal timestamps with conflicting values resolve to the phone's value, matching collector v1. The slot preference remains separate from collector ownership, except that selecting anything other than `03` disables Dual collection.
+- Automated test coverage verifies slot message parsing, timestamp round-tripping, invalid values, and tie/newer-choice policy. Physical phone/watch synchronization and actual G7 slot acceptance remain unverified.
