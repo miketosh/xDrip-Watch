@@ -1,7 +1,7 @@
 # Local data exchange architecture: Tandem, xDrip-Watch, and Garmin G7 Scout
 
 **Canonical cross-repository design contract**  
-**Updated:** 2026-10-30 (field capability maximum-version semantics and CI verification)  
+**Updated:** 2026-10-31 (five-mode Collector contract and build-423 timing evidence)  
 **Phone-side repository:** [`miketosh/xDrip-Watch`, branch `garmin-bridge`](https://github.com/miketosh/xDrip-Watch/tree/garmin-bridge)  
 **Watch-side repository:** [`miketosh/garmin7-scout`, branch `main`](https://github.com/miketosh/garmin7-scout/tree/main)
 
@@ -99,7 +99,7 @@ Keep the current message types separate; never overload saved G7 authentication-
 | Phone ↔ watch | `caps` v1 | Implemented on both sides; compatibility tests added; hardware delivery unverified | Advertises maximum supported versions for individual message fields in a flat `f` string. Senders omit fields/messages that require a field version the receiver has not advertised. Legacy peers without `caps` are assumed to support established v1 fields only; the five-mode `collector.c` field and optional `key.name` require version 2. The watch does not advertise pump_status receiver support, so the phone test sender refuses to send pump_status until those fields are explicitly advertised. Optional glucose.alg, glucose.do and glucose.pr are not advertised by the current phone parser and are omitted by the watch. |
 | Phone → watch | bounded `pump_history` batch (later) | Planned | Validated, timestamped events with deterministic IDs, explicit event semantics and strict count/size limits. |
 
-### 6.1 Rules for every v1 message (reviewed 2026-10-25; keep both repositories aligned)
+### 6.1 Rules for every v1 message (reviewed 2026-10-31; keep both repositories aligned)
 
 - A flat dictionary with string keys. `t` (type) and `v` (integer message version, `1`) are always present. A receiver ignores a message whose `t`/`v` it does not know and logs only type and version. The `caps` v1 message additionally carries `f`, a flat pipe-delimited list of `message.field=fieldVersion` entries; this advertises what the receiving side can parse, not what the sender can produce.
 - **Integers only** for numbers: insulin in milliunits, glucose in mg/dL, times in Unix epoch **seconds** (fits Connect IQ's 32-bit `Number` until 2038). Strings ≤ 12 characters. No floats, no nested containers in v1.
@@ -154,7 +154,7 @@ Sent once per new G7 reading (new sequence), via Connect IQ `Communications.tran
 
 **Implemented on the phone (2026-10-25):** `garmin/GarminWatchMessages` builds `pump_status` and parses/deduplicates `glucose` exactly as above; `GarminWatchMessagesTest` (15 tests) covers both. `GarminBridge.sendPumpStatus` sends it; the Tandem test screen has a "Send pump status to watch" button. **Watch → phone built (2026-10-25, Claude Code - garmin7-scout-watch-integrator, at the owner's request after the xDrip-Watch session stopped):** garmin7-scout `ScoutGlucoseSender` sends one `glucose` v1 message per new accepted reading (`Communications.transmit`). `GarminBridge.startListening` (started 5 s after launch in `.garminbridge` dev builds, and from the bridge test screen's "Listen for watch glucose") registers for the watch app's events, applies `parseGlucose` and `Deduper`, and stores accepted readings with `BgReading.bgReadingInsertFromG5(mg, st, "Garmin watch")`, which needs a started sensor in xDrip. xDrip's screens, alerts and local web service (read by phone-fed Garmin faces and widgets) then show it. No glucose echo or pump-status response is sent back to the watch; phone→watch control/configuration messages (`key` and `collector`) are independent of glucose reporting. **Not implemented:** the watch-side `pump_status` receiver; not verified on hardware.
 
-### 6.1 Per-field capability negotiation (implemented 2026-10-29/30)
+### 6.1 Per-field capability negotiation (implemented 2026-10-29–31)
 
 The Garmin Connect phone-message transport has two independent version layers:
 
