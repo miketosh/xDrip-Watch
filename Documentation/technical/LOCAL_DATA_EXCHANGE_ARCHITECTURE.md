@@ -61,7 +61,7 @@ Owner policy and safety constraints:
 2. **Single occupancy:** never run two G7 clients on slot `0x02`. Dual Collector is permitted because the phone uses `0x02` and the watch uses `0x03`, not because slot `0x02` is shareable.
 3. **Pump slot preservation:** the t:slim X2 continues using its independent pump/AID role. Do not alter or reclaim that link.
 4. **None means none:** xDrip's G7 collector and the watch collector are both off. xDrip runs its own G7 collector only in Phone as App and Dual Collector; it stores watch readings only in Watch as App / Watch as Watch.
-5. **Physical validation:** source and virtual-G7 tests cover mode selection, but they do not establish that a live G7 accepts either role or that handoff/recovery works on hardware. The latest recorded build-423 Watch as App capture still lost the link in WAIT_ROUND2 (10/10 attempts) after a delayed round-1 answer; do not treat the selected mode or simulator success as live-sensor validation.
+5. **Physical validation:** source and virtual-G7 tests cover mode selection, but they do not establish that a live G7 accepts either role or that handoff/recovery works on hardware. The latest recorded build-423 Watch as App capture still lost the link in WAIT_ROUND2 (10/10 connected attempts) after a delayed round-1 answer; do not treat the selected mode or simulator success as live-sensor validation.
 
 The numeric labels are based on community implementation documentation/research; they are not a Dexcom-issued public protocol contract. See [G7 protocol research](https://github.com/miketosh/garmin7-scout/blob/main/docs/PROTOCOL_RESEARCH.md) and [end-state architecture](https://github.com/miketosh/garmin7-scout/blob/main/docs/END_STATE_ARCHITECTURE.md).
 
