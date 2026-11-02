@@ -1,7 +1,7 @@
 # Local data exchange architecture: Tandem, xDrip-Watch, and Garmin G7 Scout
 
 **Canonical cross-repository design contract**  
-**Updated:** 2026-10-31 (five-mode Collector contract and build-423 timing evidence)  
+**Updated:** 2026-11-02 (five-mode Collector contract and build-428 probe evidence)  
 **Phone-side repository:** [`miketosh/xDrip-Watch`, branch `garmin-bridge`](https://github.com/miketosh/xDrip-Watch/tree/garmin-bridge)  
 **Watch-side repository:** [`miketosh/garmin7-scout`, branch `main`](https://github.com/miketosh/garmin7-scout/tree/main)
 
@@ -61,7 +61,7 @@ Owner policy and safety constraints:
 2. **Single occupancy:** never run two G7 clients on slot `0x02`. Dual Collector is permitted because the phone uses `0x02` and the watch uses `0x03`, not because slot `0x02` is shareable.
 3. **Pump slot preservation:** the t:slim X2 continues using its independent pump/AID role. Do not alter or reclaim that link.
 4. **None means none:** xDrip's G7 collector and the watch collector are both off. xDrip runs its own G7 collector only in Phone as App and Dual Collector; it stores watch readings only in Watch as App / Watch as Watch.
-5. **Physical validation:** source and virtual-G7 tests cover mode selection, but they do not establish that a live G7 accepts either role or that handoff/recovery works on hardware. The latest recorded build-423 Watch as App capture still lost the link in WAIT_ROUND2 (10/10 connected attempts) after a delayed round-1 answer; do not treat the selected mode or simulator success as live-sensor validation.
+5. **Physical validation:** source and virtual-G7 tests cover mode selection, but they do not establish that a live G7 accepts either role or that handoff/recovery works on hardware. Scout builds 423/425 recorded round-1 payload delays around 3.3 s and `WAIT_ROUND2` link loss. A later temporary build-428 probe recorded a matched round-0 ACK and queued/issued the first round-1 payload write 54 ms after that ACK, but still lost the link in `WAIT_ROUND2` at 7.449 s after connect; payload completion, proof verification, authentication, and glucose delivery were not established. The probe used diagnostic `watch-probe/2`, and does not prove live role acceptance or a fix to the earlier delay. Do not treat selected mode, host tests, or simulator success as live-sensor validation. See Scout's [runtime timing report](https://github.com/miketosh/garmin7-scout/blob/main/docs/CONNECT_IQ_RUNTIME_CONSTRAINTS.md#65-build-428-probe-prompt-round-1-queue-completion-unobserved-2026-11-02).
 
 The numeric labels are based on community implementation documentation/research; they are not a Dexcom-issued public protocol contract. See [G7 protocol research](https://github.com/miketosh/garmin7-scout/blob/main/docs/PROTOCOL_RESEARCH.md) and [end-state architecture](https://github.com/miketosh/garmin7-scout/blob/main/docs/END_STATE_ARCHITECTURE.md).
 
